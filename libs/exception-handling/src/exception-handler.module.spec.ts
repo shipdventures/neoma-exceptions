@@ -1,10 +1,10 @@
 import { Test } from "@nestjs/testing"
-import { ExampleModule } from "@lib"
+import { ExceptionHandlerModule } from "@lib"
 
-describe("ExampleModule", () => {
+describe("ExceptionHandlerModule", () => {
   it("should compile the module", async () => {
     const module = await Test.createTestingModule({
-      imports: [ExampleModule],
+      imports: [ExceptionHandlerModule],
     }).compile()
 
     expect(module).toBeDefined()
