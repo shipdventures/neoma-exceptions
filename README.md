@@ -1,239 +1,346 @@
-# Neoma Package Template
+# @neoma/exception-handling
 
-Template for creating new Neoma packages with consistent structure, configuration, and testing setup.
+> Automatic exception handling and intelligent logging for NestJS applications
 
-## Creating a New Package
+Laravel-inspired global exception handling that provides consistent error responses and smart logging based on error severity.
 
-### 1. Copy this template
+## Motivation
 
-```bash
-cd /path/to/wulfstack/packages
-cp -r neoma-package-template neoma-<your-package-name>
-cd neoma-<your-package-name>
-```
+NestJS's default exception handling works, but lacks sophisticated logging patterns that differentiate between client errors (404s, validation errors) and server errors (500s, unhandled exceptions). Every production application needs:
 
-### 2. Replace placeholders
+- Consistent error response formatting
+- Different log levels for different error types (404s shouldn't alarm you at 3am)
+- Rich contextual logging with request details
+- Zero boilerplate in your controllers
 
-Search and replace throughout the project:
-- `{{PACKAGE_NAME}}` → Your package name (e.g., "garmr", "validation")
-- `{{PACKAGE_DESCRIPTION}}` → Short description
-- `{{REPO_URL}}` → GitHub repository URL (e.g., "https://github.com/shipdventures/neoma-garmr")
+`@neoma/exception-handling` provides Laravel-quality exception handling for NestJS with a single import.
 
-**Quick find/replace:**
-```bash
-# macOS/Linux
-find . -type f -name "*.json" -o -name "*.md" -o -name "*.ts" | xargs sed -i '' 's/{{PACKAGE_NAME}}/your-package-name/g'
-find . -type f -name "*.json" -o -name "*.md" -o -name "*.ts" | xargs sed -i '' 's/{{PACKAGE_DESCRIPTION}}/Your description/g'
-find . -type f -name "*.json" -o -name "*.md" -o -name "*.ts" | xargs sed -i '' 's|{{REPO_URL}}|https://github.com/your-org/your-repo|g'
-```
+## The Problem
 
-### 3. Rename directories
+**Without this package:**
 
-```bash
-mv libs/package-template libs/your-package-name
-```
-
-### 4. Install dependencies
-
-```bash
-npm install
-```
-
-### 5. Start building!
-
-```bash
-npm test        # Unit tests (TDD)
-npm run test:e2e # E2E tests
-npm run build   # Build library
-npm run lint    # Lint code
-```
-
-## Package Structure
-
-```
-neoma-<package-name>/
-├── libs/
-│   └── <package-name>/           # The npm package
-│       ├── src/
-│       │   ├── modules/          # NestJS modules
-│       │   ├── decorators/       # Custom decorators
-│       │   ├── middlewares/      # Middleware
-│       │   ├── guards/           # Guards
-│       │   ├── services/         # Services
-│       │   ├── interfaces/       # TypeScript interfaces
-│       │   ├── constants/        # Constants
-│       │   └── index.ts          # Public API exports
-│       ├── package.json          # Published package.json
-│       └── tsconfig.lib.json     # Library TypeScript config
-├── src/                          # Example/test application
-│   ├── app.module.ts
-│   └── ...
-├── specs/                        # E2E tests
-│   ├── jest-e2e.json
-│   └── *.e2e-spec.ts
-├── fixtures/                     # Test fixtures and utilities
-│   ├── app/                      # Test app lifecycle management
-│   ├── database/                 # In-memory database setup
-│   ├── models/                   # Model factory patterns
-│   ├── matchers/                 # Custom Jest matchers
-│   └── e2e-setup.js              # E2E build hook
-├── package.json                  # Development package.json
-├── tsconfig.json                 # Root TypeScript config
-├── eslint.config.mjs             # ESLint config
-├── .prettierrc                   # Prettier config
-├── .gitignore
-├── .nvmrc
-├── LICENSE
-└── README.md                     # Package documentation
-```
-
-## Testing Strategy
-
-### E2E Tests (`specs/`)
-- One file per major feature or configuration
-- Tests full install experience and integration
-- Uses real NestJS app, real database
-- Proves README instructions work
-
-**Example**: The template includes `specs/app.e2e-spec.ts` demonstrating how to test endpoints using `managedAppInstance()` and supertest.
-
-### Unit Tests (`libs/<package>/src/**/*.spec.ts`)
-- TDD: Drive implementation
-- Test individual classes/functions
-- Fast feedback loop
-- Test edge cases and error handling
-
-**Example**: The template includes `libs/package-template/src/modules/example.module.spec.ts` showing how to test NestJS modules.
-
-### Complete Testing Flow
-
-1. **Write library code** in `libs/package-template/src/`
-2. **Write unit tests** alongside your code (`*.spec.ts`)
-3. **Export from** `libs/package-template/src/index.ts`
-4. **Import in** `src/app.module.ts` for E2E testing
-5. **Write E2E tests** in `specs/` to validate integration
-
-The template includes working examples of all these steps with `ExampleModule`.
-
-**Don't test the same config twice** - E2E covers integration, unit tests cover logic.
-
-## Testing Infrastructure
-
-The template includes ready-to-use testing utilities in the `fixtures/` directory:
-
-### App Lifecycle (`fixtures/app`)
 ```typescript
-import { managedAppInstance } from "fixtures/app"
+// app.module.ts - No global exception handling
+import { Module } from '@nestjs/common'
 
-describe("My E2E Test", () => {
-  it("should work", async () => {
-    const app = managedAppInstance()
-    // App is automatically initialized before each test
-    // and cleaned up after each test
+@Module({
+  controllers: [UserController],
+})
+export class AppModule {}
+
+// Your controller
+@Get('users/:id')
+async getUser(@Param('id') id: string) {
+  const user = await this.users.findOne(id)
+  if (!user) {
+    // Throws NotFoundException, logs at ERROR level
+    // 404s flood your error monitoring
+    throw new NotFoundException('User not found')
+  }
+  return user
+}
+```
+
+**Result:**
+- All exceptions logged at the same level
+- No request context in logs
+- No differentiation between client errors and server errors
+- Manual error handling in every controller
+
+## The Solution
+
+**With this package:**
+
+```typescript
+// app.module.ts - One-line setup
+import { Module } from '@nestjs/common'
+import { ExceptionHandlerModule } from '@neoma/exception-handling'
+
+@Module({
+  imports: [ExceptionHandlerModule],
+  controllers: [UserController],
+})
+export class AppModule {}
+
+// Your controller - unchanged
+@Get('users/:id')
+async getUser(@Param('id') id: string) {
+  const user = await this.users.findOne(id)
+  if (!user) {
+    // Now automatically logged at DEBUG level with request context
+    throw new NotFoundException('User not found')
+  }
+  return user
+}
+```
+
+**Result:**
+- ✅ 404s logged at DEBUG level (not in your error monitoring)
+- ✅ 4xx errors logged at WARN level (client issues)
+- ✅ 5xx errors logged at ERROR level (your problems)
+- ✅ Full request context in every log
+- ✅ Consistent error response format
+- ✅ Zero controller boilerplate
+
+## Installation
+
+```bash
+npm install @neoma/exception-handling
+```
+
+## Basic Usage
+
+### 1. Import the Module
+
+```typescript
+import { Module } from '@nestjs/common'
+import { ExceptionHandlerModule } from '@neoma/exception-handling'
+
+@Module({
+  imports: [ExceptionHandlerModule],
+})
+export class AppModule {}
+```
+
+That's it. All exceptions are now handled automatically.
+
+### 2. Throw Exceptions Anywhere
+
+```typescript
+import {
+  BadRequestException,
+  NotFoundException,
+  UnauthorizedException,
+  InternalServerErrorException
+} from '@nestjs/common'
+
+@Controller('users')
+export class UserController {
+  @Get(':id')
+  async getUser(@Param('id') id: string) {
+    const user = await this.users.findOne(id)
+
+    if (!user) {
+      // Logged at DEBUG level
+      throw new NotFoundException('User not found')
+    }
+
+    return user
+  }
+
+  @Post()
+  async createUser(@Body() dto: CreateUserDto) {
+    if (!dto.email) {
+      // Logged at WARN level
+      throw new BadRequestException('Email is required')
+    }
+
+    // Unhandled errors logged at ERROR level
+    return await this.users.create(dto)
+  }
+}
+```
+
+## How It Works
+
+### Logging Levels
+
+The exception filter intelligently logs based on HTTP status code:
+
+| Status Code | Log Level | Example Exceptions | Rationale |
+|-------------|-----------|-------------------|-----------|
+| 404 | `DEBUG` | `NotFoundException` | Expected in normal operation, not an error |
+| 400-499 | `WARN` | `BadRequestException`, `UnauthorizedException` | Client errors, worth monitoring |
+| 500-599 | `ERROR` | `InternalServerErrorException` | Server errors, needs immediate attention |
+| Non-HTTP | `ERROR` | `TypeError`, `ReferenceError` | Unhandled exceptions, critical |
+
+### Log Format
+
+Each log includes:
+- **Status code** - For quick filtering
+- **Error type** - The exception class name
+- **Error details** - Full error object with message and stack trace
+- **Request context** - HTTP method, URL, headers, etc.
+
+Example log output:
+```
+ERROR [500 Request failed - InternalServerErrorException] {
+  err: InternalServerErrorException: Database connection failed
+      at UserService.findOne (src/users/user.service.ts:42:15)
+      at UserController.getUser (src/users/user.controller.ts:18:29)
+      ... stack trace ...
+  req: {
+    method: 'GET',
+    url: '/users/123',
+    headers: { ... }
+  }
+}
+```
+
+### Response Format
+
+All exceptions return consistent JSON responses:
+
+```json
+{
+  "statusCode": 404,
+  "message": "User not found",
+  "error": "Not Found"
+}
+```
+
+For unhandled (non-HTTP) exceptions:
+
+```json
+{
+  "statusCode": 500,
+  "message": "Internal server error",
+  "error": "Internal Server Error"
+}
+```
+
+## Logging
+
+### Recommended: @neoma/logger
+
+This package works best with [@neoma/logger](https://github.com/shipdventures/neoma-logger) for rich, structured error logging with full request context and production-grade features.
+
+```typescript
+import { Module } from '@nestjs/common'
+import { LoggerModule } from '@neoma/logger'
+import { ExceptionHandlerModule } from '@neoma/exception-handling'
+
+@Module({
+  imports: [
+    LoggerModule.forRoot(),
+    ExceptionHandlerModule,
+  ],
+})
+export class AppModule {}
+```
+
+### Built-in NestJS Logger
+
+Works with NestJS's built-in Logger out of the box, but with limitations due to its non-standard logging API. Context objects may not serialize as cleanly, and you'll see formatting quirks in log output.
+
+### Custom Loggers
+
+Compatible with any logger implementing NestJS's `LoggerService` interface. Structured loggers (Pino, Winston, Bunyan) will provide the best experience with full context object serialization.
+
+## API Reference
+
+### `ExceptionHandlerModule`
+
+A NestJS module that registers a global exception filter.
+
+```typescript
+import { ExceptionHandlerModule } from '@neoma/exception-handling'
+
+@Module({
+  imports: [ExceptionHandlerModule],
+})
+export class AppModule {}
+```
+
+**No configuration needed** - works out of the box with sensible defaults.
+
+### `NeomaExceptionFilter`
+
+The global exception filter (automatically registered by `ExceptionHandlerModule`).
+
+You typically don't interact with this directly, but you can import it for testing:
+
+```typescript
+import { NeomaExceptionFilter } from '@neoma/exception-handling'
+
+// In tests
+const filter = new NeomaExceptionFilter()
+```
+
+## Advanced Usage
+
+### Testing Exception Handling
+
+```typescript
+import { Test } from '@nestjs/testing'
+import { ExceptionHandlerModule } from '@neoma/exception-handling'
+import { INestApplication } from '@nestjs/common'
+import * as request from 'supertest'
+
+describe('Exception Handling', () => {
+  let app: INestApplication
+
+  beforeEach(async () => {
+    const module = await Test.createTestingModule({
+      imports: [ExceptionHandlerModule, YourModule],
+    }).compile()
+
+    app = module.createNestApplication()
+    await app.init()
+  })
+
+  it('should return 404 for not found', () => {
+    return request(app.getHttpServer())
+      .get('/users/999')
+      .expect(404)
+      .expect({
+        statusCode: 404,
+        message: 'User not found',
+        error: 'Not Found',
+      })
   })
 })
 ```
 
-### Database Setup (`fixtures/database`)
+### Custom Exception Classes
+
+Works seamlessly with custom exceptions:
+
 ```typescript
-import { managedDatasourceInstance } from "fixtures/database"
+import { HttpException, HttpStatus } from '@nestjs/common'
 
-describe("My Database Test", () => {
-  it("should query database", async () => {
-    const datasource = managedDatasourceInstance()
-    // Fresh in-memory SQLite database for each test
-    // Automatically destroyed after each test
-  })
-})
+export class UserNotVerifiedException extends HttpException {
+  constructor() {
+    super('User email not verified', HttpStatus.FORBIDDEN)
+  }
+}
+
+// In your controller
+@Post('login')
+async login(@Body() credentials: LoginDto) {
+  const user = await this.users.findByEmail(credentials.email)
+
+  if (!user.emailVerified) {
+    // Logged at WARN level (403 is 4xx)
+    throw new UserNotVerifiedException()
+  }
+
+  return this.auth.login(user)
+}
 ```
 
-### Model Factories (`fixtures/models`)
-See `fixtures/models/README.md` for the pattern and examples.
+## Contributing
 
-### Custom Matchers (`fixtures/matchers`)
-- `toThrowEquals(error)` - Assert errors match exactly
-- `toEqualError(error)` - Assert errors are equal
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
-### E2E Build Hook (`fixtures/e2e-setup.js`)
-Automatically builds the library before E2E tests run.
+## License
 
-## Scripts
+MIT
 
-- `npm run build` - Build the library
-- `npm run lint` - Lint all code
-- `npm test` - Run unit tests in watch mode
-- `npm run test:e2e` - Run E2E tests in watch mode
+## Links
 
-## Configuration Highlights
+- [npm package](https://www.npmjs.com/package/@neoma/exception-handling)
+- [GitHub repository](https://github.com/shipdventures/neoma-exception-handling)
+- [Issue tracker](https://github.com/shipdventures/neoma-exception-handling/issues)
+- [Neoma ecosystem](https://github.com/shipdventures/neoma)
 
-### TypeScript
-- Target: ES2022
-- Strict null checks enabled
-- Decorators enabled
-- No semicolons (enforced)
+## Part of the Neoma Ecosystem
 
-### ESLint
-- Explicit return types required
-- Explicit member accessibility required
-- No floating promises
-- Prettier integration
+This package is part of the Neoma ecosystem of Laravel-inspired NestJS packages:
 
-### Jest
-- ts-jest for TypeScript
-- jest-extended for additional matchers
-- In-memory SQLite for tests
-- Module path mapping for clean imports
+- [@neoma/config](https://github.com/shipdventures/neoma-config) - Type-safe environment configuration
+- [@neoma/logger](https://github.com/shipdventures/neoma-logger) - Request and application logging
+- **@neoma/exception-handling** - Global exception handling (you are here)
+- More coming soon...
 
-## Example README Structure
-
-When you publish, your README should include:
-
-1. **Motivation** - Why this package exists
-2. **Problem/Solution** - Before/after code examples
-3. **Installation** - Step-by-step setup
-4. **Basic Usage** - Simple examples
-5. **Advanced Usage** - Custom configurations
-6. **API Reference** - All public APIs
-7. **Links** - npm, GitHub, docs
-
-See `@neoma/route-model-binding` README for a good example.
-
-## Publishing Checklist
-
-Before publishing to npm:
-
-- [ ] All tests passing
-- [ ] README is complete
-- [ ] LICENSE file included
-- [ ] Version bumped in both package.json files
-- [ ] Built with `npm run build`
-- [ ] Verify exports in `libs/<package>/src/index.ts`
-- [ ] Test installation in separate project
-- [ ] Verify peer dependencies are correct
-
-```bash
-cd libs/<your-package-name>
-npm publish --access public
-```
-
-## Neoma Package Standards
-
-All Neoma packages should:
-- ✅ Be Laravel-inspired but NestJS-native
-- ✅ Have minimal boilerplate
-- ✅ Include comprehensive tests
-- ✅ Have excellent documentation
-- ✅ Use TypeScript strictly
-- ✅ Follow consistent code style
-- ✅ Be production-ready
-
-## Template Improvements (TODO)
-
-Future enhancements to this template:
-
-- [ ] **GitHub Issue & PR Templates** - Add `.github/ISSUE_TEMPLATE/` for bug reports and feature requests, plus `.github/pull_request_template.md`
-- [ ] **CONTRIBUTING.md** - Document contribution guidelines, coding standards, and development workflow
-- [ ] **CHANGELOG.md Template** - Add template following Keep a Changelog format
-- [ ] **README Badges** - Add placeholders for CI status, npm version, and license badges
-- [ ] **VSCode Extensions** - Add `.vscode/extensions.json` with recommended extensions for NestJS development
-- [ ] **CODE_OF_CONDUCT.md** - Add community standards if accepting external contributions
+Each package works independently but integrates seamlessly for a complete Laravel-like experience in NestJS.

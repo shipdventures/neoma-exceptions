@@ -1,8 +1,9 @@
 import { Module } from "@nestjs/common"
 import { AppController } from "./app.controller"
+import { ExceptionHandlerModule } from "@lib"
 
 @Module({
-  imports: [],
+  imports: [ExceptionHandlerModule],
   controllers: [AppController],
 })
-export class AppModule {}
+export class ExceptionModule {}

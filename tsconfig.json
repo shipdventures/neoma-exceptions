@@ -19,8 +19,8 @@
     "noFallthroughCasesInSwitch": false,
     "paths": {
       "fixtures/*": ["fixtures/*"],
-      "@lib": ["libs/package-template/src"],
-      "@lib/*": ["libs/package-template/src/*"]
+      "@lib": ["libs/exception-handling/src"],
+      "@lib/*": ["libs/exception-handling/src/*"]
     }
   }
 }
