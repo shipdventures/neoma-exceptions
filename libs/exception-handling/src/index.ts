@@ -1,5 +1,5 @@
 // Export all public APIs here
-export * from "./example.module"
+export * from "./exception-handler.module"
 
 // Additional exports as you build your package:
 // export * from "./decorators/your-decorator.decorator"

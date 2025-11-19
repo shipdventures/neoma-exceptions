@@ -1,5 +1,5 @@
 {
-  "name": "neoma-package-template",
+  "name": "neoma-exception-handling",
   "engines": {
     "node": ">=22.0.0"
   },
@@ -9,7 +9,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "tsc -p ./libs/package-template/tsconfig.lib.json",
+    "build": "tsc -p ./libs/exception-handling/tsconfig.lib.json",
     "lint": "eslint .",
     "test": "node node_modules/.bin/jest --watch --runInBand",
     "test:e2e": "NEOMA_MANAGED_APP_MODULE_PATH=src/app.module.ts#AppModule node node_modules/.bin/jest --config ./specs/jest-e2e.json --watch --runInBand"
@@ -25,7 +25,7 @@
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",
     "@faker-js/faker": "^9.6.0",
-    "@neoma/managed-app": "^0.2.0",
+    "@neoma/managed-app": "^0.3.0",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
@@ -82,8 +82,9 @@
     ],
     "moduleNameMapper": {
       "fixtures/(.*)$": "<rootDir>/fixtures/$1",
-      "@lib/(.*)$": "<rootDir>/libs/package-template/src/$1",
-      "@lib": "<rootDir>/libs/package-template/src"
-    }
+      "@lib/(.*)$": "<rootDir>/libs/exception-handling/src/$1",
+      "@lib": "<rootDir>/libs/exception-handling/src"
+    },
+    "resetMocks": true
   }
 }

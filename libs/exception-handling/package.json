@@ -1,19 +1,19 @@
 {
-  "name": "@neoma/package-template",
+  "name": "@neoma/exception-handling",
   "version": "0.1.0",
-  "description": "{{PACKAGE_DESCRIPTION}}",
+  "description": "Effective and automatic exception handling.",
   "author": "Shipdventures",
   "repository": {
     "type": "git",
-    "url": "{{REPO_URL}}"
+    "url": "https://github.com/shipdventures/neoma-exception-handling"
   },
   "bugs": {
-    "url": "{{REPO_URL}}/issues"
+    "url": "https://github.com/shipdventures/neoma-exception-handling/issues"
   },
-  "homepage": "{{REPO_URL}}#readme",
+  "homepage": "https://github.com/shipdventures/neoma-exception-handling#readme",
   "keywords": [
     "nestjs",
-    "package-template",
+    "exception-handling",
     "laravel",
     "neoma"
   ],
