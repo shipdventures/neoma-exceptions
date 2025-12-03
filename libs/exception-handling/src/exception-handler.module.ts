@@ -5,11 +5,13 @@ import { APP_FILTER } from "@nestjs/core"
 /**
  * Global exception handling module for NestJS applications.
  *
- * Registers a global exception filter that provides:
+ * A drop-in replacement for NestJS's built-in exception handling with
+ * zero configuration required. Provides:
  * - Intelligent logging based on HTTP status codes
  * - Consistent JSON error responses
  * - Automatic handling of all exceptions (HTTP and unhandled)
  * - Support for request-scoped loggers via `req.logger`
+ * - Custom exception behavior via the {@link NeomaException} interface
  *
  * @example
  * ```typescript
@@ -22,8 +24,10 @@ import { APP_FILTER } from "@nestjs/core"
  * export class AppModule {}
  * ```
  *
- * Once imported, all exceptions thrown in your application will be
- * automatically caught and handled with appropriate logging levels:
+ * Once imported, all exceptions are automatically caught and handled.
+ *
+ * ## Default Logging Levels
+ *
  * - 404 errors: DEBUG level
  * - 4xx errors: WARN level
  * - 5xx errors: ERROR level
@@ -36,7 +40,13 @@ import { APP_FILTER } from "@nestjs/core"
  * 2. Overridden NestJS Logger - Via `Logger.overrideLogger()`
  * 3. Default NestJS ConsoleLogger
  *
- * @see NeomaExceptionFilter for detailed logging behavior
+ * ## Custom Exceptions
+ *
+ * Implement the {@link NeomaException} interface for full control over
+ * status codes, responses, and logging behavior. All methods are optional.
+ *
+ * @see NeomaException for the custom exception interface
+ * @see NeomaExceptionFilter for detailed behavior
  */
 @Module({
   providers: [{ provide: APP_FILTER, useClass: NeomaExceptionFilter }],

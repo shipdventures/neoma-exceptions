@@ -265,6 +265,24 @@ describe("new NeomaExceptionFilter()", () => {
       expect(loggerSpy.debug).not.toHaveBeenCalled()
       expect(loggerSpy.warn).not.toHaveBeenCalled()
     })
+
+    describe("And the exception implements a log method", () => {
+      it("should call the exception's log method with the default Logger", () => {
+        const customException = {
+          ...new Error(),
+          name: faker.hacker.noun(),
+          log: jest.fn(),
+        }
+
+        const host = executionContext() as ArgumentsHost
+        filter.catch(customException, host)
+
+        expect(customException.log).toHaveBeenCalledWith(Logger)
+        expect(loggerSpy.warn).not.toHaveBeenCalled()
+        expect(loggerSpy.debug).not.toHaveBeenCalled()
+        expect(loggerSpy.error).not.toHaveBeenCalled()
+      })
+    })
   })
 
   describe("Using an overriden NestJs Logger", () => {
@@ -406,6 +424,24 @@ describe("new NeomaExceptionFilter()", () => {
       )
       expect(loggerSpy.debug).not.toHaveBeenCalled()
       expect(loggerSpy.warn).not.toHaveBeenCalled()
+    })
+
+    describe("And the exception implements a log method", () => {
+      it("should call the exception's log method with the default Logger", () => {
+        const customException = {
+          ...new Error(),
+          name: faker.hacker.noun(),
+          log: jest.fn(),
+        }
+
+        const host = executionContext() as ArgumentsHost
+        filter.catch(customException, host)
+
+        expect(customException.log).toHaveBeenCalledWith(Logger)
+        expect(loggerSpy.warn).not.toHaveBeenCalled()
+        expect(loggerSpy.debug).not.toHaveBeenCalled()
+        expect(loggerSpy.error).not.toHaveBeenCalled()
+      })
     })
   })
 
@@ -568,6 +604,23 @@ describe("new NeomaExceptionFilter()", () => {
       )
       expect(logger.debug).not.toHaveBeenCalled()
       expect(logger.warn).not.toHaveBeenCalled()
+    })
+
+    describe("And the exception implements a log method", () => {
+      it("should call the exception's log method with the request Logger", () => {
+        const customException = {
+          ...new Error(),
+          name: faker.hacker.noun(),
+          log: jest.fn(),
+        }
+
+        filter.catch(customException, host)
+
+        expect(customException.log).toHaveBeenCalledWith(logger)
+        expect(logger.warn).not.toHaveBeenCalled()
+        expect(logger.debug).not.toHaveBeenCalled()
+        expect(logger.error).not.toHaveBeenCalled()
+      })
     })
   })
 })

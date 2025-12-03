@@ -7,70 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.3.3] - 2025-11-13
-
-### Fixed
-- Update setup script to replace literal `exception-handling` path references
-- Fix broken path mappings in tsconfig.json and Jest configs after setup
-- Remove circular dependency by replacing npm package import with @lib path alias
-
-## [0.3.2] - 2025-11-13
+## [0.2.0] - 2025-12-03
 
 ### Added
-- `@neoma/managed-app` dependency for better error handling and debugging support
+- Flexible logger selection with priority: `req.logger` → overridden Logger → default ConsoleLogger
+- Request-scoped logging support via `req.logger` for correlation IDs and request context
+- Structured log format `(message, { err })` for Pino, Winston, Bunyan
+- Original NestJS format `(err, message, context)` preserved for ConsoleLogger
+- MockLoggerService fixture for testing
+- Express fixture updated to support arbitrary request properties
 
-### Changed
-- Updated test:e2e script to use NEOMA_MANAGED_APP_MODULE_PATH environment variable
-- Simplified Jest setup by removing build-module.js dependency
-- Added @lib path alias for cleaner imports to package template source
-
-## [0.3.1] - 2025-11-12
-
-### Fixed
-- Prevent template repository from publishing to npm when tagged
-- Publish job now only runs for packages created from template, not template itself
-
-## [0.3.0] - 2025-11-12
-
-### Fixed
-- Replace `exception-handling` placeholder with buildable `exception-handling` name
-- Update setup script to rename `libs/exception-handling` instead of `libs/PACKAGE_NAME`
-- Template now builds, tests, lints, and validates successfully
+## [0.1.0] - 2025-12-03
 
 ### Added
-- Publish dry-run test in CI workflow to validate package structure
-- Complete package-lock.json for reproducible builds
+- `ExceptionHandlerModule` for zero-config global exception handling
+- `NeomaExceptionFilter` with intelligent logging based on HTTP status code
+  - 404s logged at DEBUG level (expected in normal operation)
+  - 4xx errors logged at WARN level (client issues)
+  - 5xx errors logged at ERROR level (server problems)
+  - Unhandled exceptions logged at ERROR level
+- Consistent JSON error responses for all exceptions
+- Duck-typed exception support - any object implementing `getStatus()` and `getResponse()` methods is handled automatically
 
-### Changed
-- Directory structure uses `libs/exception-handling` instead of `libs/PACKAGE_NAME`
-- All imports and references updated to use `@neoma/exception-handling`
-
-## [0.2.0] - 2025-11-12
-
-### Added
-- Build module on test functionality
-- Comprehensive testing infrastructure with fixtures
-- Example module with unit tests
-
-### Fixed
-- INestApplication typing issues
-- Application specialisation improvements
-
-## [0.1.0] - Initial Release
-
-### Added
-- Initial Neoma package template structure
-- NestJS module scaffolding
-- Testing setup with Jest
-- ESLint and Prettier configuration
-- TypeScript configuration
-- Setup script for placeholder replacement
-- Comprehensive README documentation
-
-[Unreleased]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.3.3...HEAD
-[0.3.3]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.3.2...v0.3.3
-[0.3.2]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.3.1...v0.3.2
-[0.3.1]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.3.0...v0.3.1
-[0.3.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.2.0...v0.3.0
+[Unreleased]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.2.0...HEAD
 [0.2.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/shipdventures/neoma-exception-handling/releases/tag/v0.1.0

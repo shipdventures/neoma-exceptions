@@ -299,6 +299,28 @@ import { NeomaExceptionFilter } from '@neoma/exception-handling'
 const filter = new NeomaExceptionFilter()
 ```
 
+### `NeomaException`
+
+Interface for custom exceptions with full control over behavior. All methods are optional:
+
+```typescript
+import { LoggerService } from '@nestjs/common'
+import { NeomaException } from '@neoma/exception-handling'
+
+export class MyException extends Error implements NeomaException {
+  // Optional: HTTP status code (default: 500)
+  getStatus?(): number
+
+  // Optional: JSON response body (default: generic 500 response)
+  getResponse?(): object
+
+  // Optional: Custom logging (default: status-code-based logging)
+  log?(logger: LoggerService): void
+}
+```
+
+See [Custom Exceptions with `NeomaException`](#custom-exceptions-with-neomaexception) for detailed examples.
+
 ## Advanced Usage
 
 ### Testing Exception Handling
@@ -361,15 +383,28 @@ async login(@Body() credentials: LoginDto) {
 }
 ```
 
-### Duck-Typed Exceptions
+### Custom Exceptions with `NeomaException`
 
-You can also create custom exceptions without extending `HttpException`. The filter uses duck-typing to handle any exception that implements `getStatus()` and `getResponse()` methods:
+Implement the `NeomaException` interface for full control over status, response, and logging. All methods are optional - unimplemented methods use Neoma defaults:
+
+| Method | Default when not implemented |
+|--------|------------------------------|
+| `getStatus()` | 500 Internal Server Error |
+| `getResponse()` | Generic 500 JSON response |
+| `log()` | Status-code-based logging |
 
 ```typescript
-export class PaymentFailedException {
-  public name = 'PaymentFailedException'
+import { LoggerService } from '@nestjs/common'
+import { NeomaException } from '@neoma/exception-handling'
 
-  constructor(private message: string) {}
+export class PaymentFailedException extends Error implements NeomaException {
+  constructor(
+    private readonly transactionId: string,
+    private readonly reason: string,
+  ) {
+    super(`Payment failed: ${reason}`)
+    this.name = 'PaymentFailedException'
+  }
 
   public getStatus(): number {
     return 402
@@ -378,29 +413,49 @@ export class PaymentFailedException {
   public getResponse(): object {
     return {
       statusCode: 402,
-      message: this.message,
+      message: this.reason,
       error: 'Payment Required',
     }
   }
-}
 
-// In your controller
-@Post('checkout')
-async checkout(@Body() order: OrderDto) {
-  const result = await this.payments.process(order)
-
-  if (!result.success) {
-    // Logged at WARN level (402 is 4xx)
-    throw new PaymentFailedException(result.error)
+  public log(logger: LoggerService): void {
+    // Custom logging with transaction context
+    logger.error?.('Payment failed', {
+      transactionId: this.transactionId,
+      reason: this.reason,
+    })
   }
-
-  return result
 }
 ```
 
-This allows you to create rich, domain-specific exceptions that integrate seamlessly with the exception handler without coupling to NestJS's `HttpException` class.
+### Disabling Logging for an Exception
 
-Exceptions without `getStatus()` and `getResponse()` methods are automatically treated as 500 Internal Server Error.
+Implement an empty `log()` method to disable logging entirely for that exception:
+
+```typescript
+export class ExpectedValidationException extends Error implements NeomaException {
+  public getStatus(): number {
+    return 422
+  }
+
+  public getResponse(): object {
+    return {
+      statusCode: 422,
+      message: this.message,
+      error: 'Validation Error',
+    }
+  }
+
+  // Empty implementation disables logging
+  public log(): void {}
+}
+```
+
+### Duck-Typed Exceptions
+
+You don't need to explicitly implement `NeomaException` - the filter uses duck-typing. Any exception with `getStatus()`, `getResponse()`, or `log()` methods will have those methods called.
+
+Exceptions without these methods are automatically treated as 500 Internal Server Error with default logging.
 
 ## Contributing
 

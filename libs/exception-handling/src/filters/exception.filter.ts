@@ -55,18 +55,31 @@ class LoggerWrapper {
  * Global exception filter that catches all exceptions and provides
  * intelligent logging based on HTTP status codes.
  *
+ * Works as a drop-in replacement for NestJS's built-in exception handling
+ * with zero configuration required. Simply import `ExceptionHandlerModule`
+ * and all exceptions are handled automatically.
+ *
  * ## Custom Exceptions
  *
- * This filter uses duck-typing to handle any exception that implements
- * `getStatus()` and `getResponse()` methods. You can create custom
- * exception classes without extending `HttpException`:
+ * Implement the {@link NeomaException} interface to create custom exceptions
+ * with full control over status, response, and logging. All methods are
+ * optional - unimplemented methods use Neoma defaults:
+ *
+ * | Method | Default when not implemented |
+ * |--------|------------------------------|
+ * | `getStatus()` | 500 Internal Server Error |
+ * | `getResponse()` | Generic 500 JSON response |
+ * | `log()` | Status-code-based logging |
  *
  * @example
  * ```typescript
- * export class PaymentFailedException {
- *   public name = 'PaymentFailedException'
+ * import { NeomaException } from '@neoma/exception-handling'
  *
- *   constructor(private message: string) {}
+ * export class PaymentFailedException extends Error implements NeomaException {
+ *   constructor(private transactionId: string) {
+ *     super('Payment failed')
+ *     this.name = 'PaymentFailedException'
+ *   }
  *
  *   public getStatus(): number {
  *     return 402
@@ -79,10 +92,19 @@ class LoggerWrapper {
  *       error: 'Payment Required',
  *     }
  *   }
+ *
+ *   public log(logger: LoggerService): void {
+ *     logger.error?.('Payment failed', { transactionId: this.transactionId })
+ *   }
  * }
  * ```
  *
- * Exceptions without these methods are treated as 500 Internal Server Error.
+ * ## Custom Logging
+ *
+ * Implement the `log(logger)` method to override default logging behavior.
+ * The logger passed will be either `req.logger` (if available) or the
+ * NestJS Logger. Implementing an empty `log()` method disables logging
+ * for that exception entirely.
  *
  * ## Logger Selection
  *
@@ -104,9 +126,9 @@ class LoggerWrapper {
  * Logger.error(err, message, 'NeomaExceptionFilter')
  * ```
  *
- * ## Logging Strategy
+ * ## Default Logging Strategy
  *
- * Different log levels are used based on the error severity:
+ * When no `log()` method is implemented, the filter logs based on status code:
  *
  * | Status Code | Log Level | Rationale |
  * |-------------|-----------|-----------|
@@ -114,19 +136,6 @@ class LoggerWrapper {
  * | 400-499 | WARN | Client errors worth monitoring |
  * | 500-599 | ERROR | Server errors needing immediate attention |
  * | Non-HTTP | ERROR | Unhandled exceptions, critical |
- *
- * ## Log Format
- *
- * Logs include the full error object with stack trace, formatted as:
- * ```
- * [STATUS] Action - ExceptionName
- * ```
- *
- * Examples:
- * - `[404] Resource not found - NotFoundException`
- * - `[400] Request rejected - BadRequestException`
- * - `[500] Request failed - InternalServerErrorException`
- * - `[500] Request failed - TypeError`
  *
  * ## Response Format
  *
@@ -140,6 +149,7 @@ class LoggerWrapper {
  * }
  * ```
  *
+ * @see NeomaException for the interface to implement
  * @see ExceptionHandlerModule for registration
  */
 @Catch()
@@ -183,7 +193,9 @@ export class NeomaExceptionFilter implements ExceptionFilter {
       })
     }
 
-    if (err.getStatus!() === HttpStatus.NOT_FOUND) {
+    if ("log" in err === true && typeof err.log === "function") {
+      err.log(request.logger || Logger)
+    } else if (err.getStatus!() === HttpStatus.NOT_FOUND) {
       logger.debug(
         err,
         `[${err.getStatus!()}] Resource not found - ${err.name}`,
