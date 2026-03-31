@@ -555,10 +555,6 @@ You don't need to explicitly implement `NeomaException` - the filter uses duck-t
 
 Exceptions without these methods are automatically treated as 500 Internal Server Error with default logging.
 
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
 ## License
 
 MIT
