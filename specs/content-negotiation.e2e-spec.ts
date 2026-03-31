@@ -36,7 +36,7 @@ describe("Content Negotiation", () => {
         error: "Not Found",
       }
       const expectedHtml = ejs.render(template, {
-        errorTemplate: "error",
+        errorTemplate: { default: "error" },
         exception,
       })
 
@@ -58,6 +58,42 @@ describe("Content Negotiation", () => {
     it("should respond with JSON when the request has no Accept header", async () => {
       await request(app.getHttpServer())
         .post("/with-template")
+        .set("Accept", "")
+        .expect(HttpStatus.NOT_FOUND)
+        .expect("Content-Type", /json/)
+    })
+  })
+
+  describe("When the route has @ErrorTemplate with a default-only options object", () => {
+    it("should render the error template when the request accepts text/html", async () => {
+      const exception = {
+        statusCode: HttpStatus.NOT_FOUND,
+        message: "Not found",
+        error: "Not Found",
+      }
+      const expectedHtml = ejs.render(template, {
+        errorTemplate: { default: "error" },
+        exception,
+      })
+
+      await request(app.getHttpServer())
+        .post("/with-default-template")
+        .set("Accept", "text/html")
+        .expect(HttpStatus.NOT_FOUND)
+        .expect(expectedHtml)
+    })
+
+    it("should respond with JSON when the request accepts application/json", async () => {
+      await request(app.getHttpServer())
+        .post("/with-default-template")
+        .set("Accept", "application/json")
+        .expect(HttpStatus.NOT_FOUND)
+        .expect("Content-Type", /json/)
+    })
+
+    it("should respond with JSON when the request has no Accept header", async () => {
+      await request(app.getHttpServer())
+        .post("/with-default-template")
         .set("Accept", "")
         .expect(HttpStatus.NOT_FOUND)
         .expect("Content-Type", /json/)
@@ -97,7 +133,7 @@ describe("Content Negotiation", () => {
         },
       }
       const expectedHtml = ejs.render(template, {
-        errorTemplate: "error",
+        errorTemplate: { default: "error" },
         exception,
       })
 

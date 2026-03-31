@@ -25,6 +25,12 @@ class ContentNegotiationController {
     throw new NotFoundException("Not found")
   }
 
+  @ErrorTemplate({ default: "error" })
+  @Post("with-default-template")
+  public withDefaultTemplate(): void {
+    throw new NotFoundException("Not found")
+  }
+
   @Post("without-template")
   public withoutTemplate(): void {
     throw new BadRequestException("Bad request")

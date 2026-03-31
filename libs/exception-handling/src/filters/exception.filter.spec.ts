@@ -626,6 +626,7 @@ describe("new NeomaExceptionFilter()", () => {
 
   describe("Content negotiation", () => {
     const templateName = faker.system.directoryPath()
+    const errorTemplateOptions = { default: templateName }
 
     it("should render the error template when the request accepts HTML and an error template is set", () => {
       const exception = new NotFoundException(faker.hacker.phrase())
@@ -633,7 +634,10 @@ describe("new NeomaExceptionFilter()", () => {
         headers: { accept: "text/html,application/xhtml+xml" },
       })
       const res = express.response({
-        locals: { errorTemplate: templateName, version: faker.system.semver() },
+        locals: {
+          errorTemplate: errorTemplateOptions,
+          version: faker.system.semver(),
+        },
       })
       const host = executionContext(req, res) as ArgumentsHost
 
@@ -667,7 +671,7 @@ describe("new NeomaExceptionFilter()", () => {
         headers: { accept: "application/json" },
       })
       const res = express.response({
-        locals: { errorTemplate: templateName },
+        locals: { errorTemplate: errorTemplateOptions },
       })
       const host = executionContext(req, res) as ArgumentsHost
 
@@ -682,7 +686,7 @@ describe("new NeomaExceptionFilter()", () => {
       const exception = new NotFoundException(faker.hacker.phrase())
       const req = express.request({ headers: {} })
       const res = express.response({
-        locals: { errorTemplate: templateName },
+        locals: { errorTemplate: errorTemplateOptions },
       })
       const host = executionContext(req, res) as ArgumentsHost
 
@@ -699,7 +703,7 @@ describe("new NeomaExceptionFilter()", () => {
         headers: { accept: "text/html" },
       })
       const res = express.response({
-        locals: { errorTemplate: templateName },
+        locals: { errorTemplate: errorTemplateOptions },
       })
       const host = executionContext(req, res) as ArgumentsHost
 
@@ -718,7 +722,7 @@ describe("new NeomaExceptionFilter()", () => {
         headers: { accept: "text/html" },
       })
       const res = express.response({
-        locals: { errorTemplate: templateName },
+        locals: { errorTemplate: errorTemplateOptions },
       })
       const host = executionContext(req, res) as ArgumentsHost
 

@@ -227,11 +227,12 @@ export class NeomaExceptionFilter implements ExceptionFilter {
     const errorTemplate = response.locals?.errorTemplate
 
     if (acceptsHtml && errorTemplate) {
+      const templateName = errorTemplate[err.name] || errorTemplate.default
       logger.debug(
         err,
-        `Rendering error template "${errorTemplate}" for [${err.getStatus!()}]`,
+        `Rendering error template "${templateName}" for [${err.getStatus!()}]`,
       )
-      response.status(err.getStatus!()).render(errorTemplate, {
+      response.status(err.getStatus!()).render(templateName, {
         ...response.locals,
         exception: err.getResponse!(),
       })

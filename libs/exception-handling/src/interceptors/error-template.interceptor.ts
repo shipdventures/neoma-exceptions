@@ -6,7 +6,10 @@ import {
 } from "@nestjs/common"
 import { Reflector } from "@nestjs/core"
 import { Observable } from "rxjs"
-import { ERROR_TEMPLATE_KEY } from "../decorators/error-template.decorator"
+import {
+  ERROR_TEMPLATE_KEY,
+  ErrorTemplateOptions,
+} from "../decorators/error-template.decorator"
 
 /**
  * Global interceptor that reads the `"error-template"` metadata set by the
@@ -40,7 +43,7 @@ export class ErrorTemplateInterceptor implements NestInterceptor {
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<any> {
-    const template = this.reflector.get<string>(
+    const template = this.reflector.get<ErrorTemplateOptions>(
       ERROR_TEMPLATE_KEY,
       context.getHandler(),
     )
