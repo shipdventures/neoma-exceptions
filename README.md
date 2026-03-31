@@ -88,6 +88,14 @@ async getUser(@Param('id') id: string) {
 npm install @neoma/exception-handling
 ```
 
+### Peer Dependencies
+
+```bash
+npm install class-validator class-transformer
+```
+
+These are required for the built-in global validation pipe.
+
 ## Basic Usage
 
 ### 1. Import the Module
@@ -179,7 +187,7 @@ ERROR [500 Request failed - InternalServerErrorException] {
 
 ### Response Format
 
-All exceptions return consistent JSON responses:
+**JSON (default)** - All exceptions return consistent JSON responses:
 
 ```json
 {
@@ -198,6 +206,44 @@ For unhandled (non-HTTP) exceptions:
   "error": "Internal Server Error"
 }
 ```
+
+**HTML** - When the request accepts `text/html` and the route has an `@ErrorTemplate` decorator, the filter renders a template instead. See [Content Negotiation](#content-negotiation) for details.
+
+### Validation
+
+The module registers a global `ValidationPipe` that transforms validation errors into a field-keyed shape:
+
+```json
+{
+  "email": { "value": "bad", "error": "must be a valid email" },
+  "name": { "value": "ab", "error": "must be at least 5 characters" }
+}
+```
+
+This is more useful than the NestJS default (`{ message: ["must be valid"] }`) for both templates (inline field errors) and APIs (programmatic field mapping).
+
+### Content Negotiation
+
+Use the `@ErrorTemplate` decorator to render HTML error pages for browser requests while keeping JSON responses for API consumers:
+
+```typescript
+import { ErrorTemplate } from '@neoma/exception-handling'
+
+@Controller('auth')
+export class AuthController {
+  @ErrorTemplate('auth/magic-link')
+  @Post('magic-link')
+  public sendMagicLink(@Body() dto: SendMagicLinkDto) {
+    // If this throws and the client accepts text/html,
+    // the 'auth/magic-link' template is rendered with:
+    // { ...res.locals, exception: err.getResponse() }
+    //
+    // API clients (Accept: application/json) get JSON as usual.
+  }
+}
+```
+
+The template receives `res.locals` spread into the render context, plus an `exception` property containing the error response object.
 
 ## Logging
 
@@ -273,7 +319,7 @@ This provides clean structured output with the full error object for better log 
 
 ### `ExceptionHandlerModule`
 
-A NestJS module that registers a global exception filter.
+A NestJS module that registers a global exception filter, validation pipe, and error template interceptor.
 
 ```typescript
 import { ExceptionHandlerModule } from '@neoma/exception-handling'
@@ -286,6 +332,11 @@ export class AppModule {}
 
 **No configuration needed** - works out of the box with sensible defaults.
 
+Registers:
+- `NeomaExceptionFilter` as a global `APP_FILTER`
+- `ValidationPipe` with `validationFactory` as a global `APP_PIPE`
+- `ErrorTemplateInterceptor` as a global `APP_INTERCEPTOR`
+
 ### `NeomaExceptionFilter`
 
 The global exception filter (automatically registered by `ExceptionHandlerModule`).
@@ -297,6 +348,35 @@ import { NeomaExceptionFilter } from '@neoma/exception-handling'
 
 // In tests
 const filter = new NeomaExceptionFilter()
+```
+
+### `@ErrorTemplate(template)`
+
+Route decorator that enables HTML error rendering via content negotiation.
+
+```typescript
+import { ErrorTemplate } from '@neoma/exception-handling'
+
+// Single template for all errors on this route
+@ErrorTemplate('auth/login')
+@Post('login')
+public login(@Body() dto: LoginDto) {}
+```
+
+When an exception occurs on a decorated route and the client sends `Accept: text/html`, the filter renders the specified template. API clients receive JSON as usual.
+
+### `ErrorTemplateInterceptor`
+
+Global interceptor that reads `@ErrorTemplate` metadata and stores it on `res.locals.errorTemplate`. Automatically registered by `ExceptionHandlerModule` - you don't need to interact with this directly.
+
+### `validationFactory`
+
+Exception factory for `ValidationPipe` that transforms validation errors into a field-keyed object. Automatically registered by `ExceptionHandlerModule`.
+
+Can be imported for use with custom validation pipe configurations:
+
+```typescript
+import { validationFactory } from '@neoma/exception-handling'
 ```
 
 ### `NeomaException`

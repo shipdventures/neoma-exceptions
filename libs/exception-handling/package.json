@@ -1,6 +1,6 @@
 {
   "name": "@neoma/exception-handling",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "description": "Effective and automatic exception handling.",
   "author": "Shipdventures",
   "repository": {
@@ -33,6 +33,8 @@
   "license": "MIT",
   "peerDependencies": {
     "@nestjs/common": "11.x",
-    "@nestjs/core": "11.x"
+    "@nestjs/core": "11.x",
+    "class-transformer": "0.x",
+    "class-validator": "0.x"
   }
 }

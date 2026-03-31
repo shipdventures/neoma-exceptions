@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-03-31
+
+### Added
+- `@ErrorTemplate` decorator for HTML error rendering via content negotiation
+- `ErrorTemplateInterceptor` to bridge route metadata to the exception filter
+- `ERROR_TEMPLATE_KEY` constant for shared metadata key
+- `validationFactory` for field-keyed validation error responses
+- Global `ValidationPipe` registration with the validation factory
+- Content negotiation in `NeomaExceptionFilter` — renders templates when the request accepts `text/html` and an error template is set, otherwise returns JSON
+- Debug logging when rendering error templates
+- `class-validator` and `class-transformer` as peer dependencies
+
+### Changed
+- `ExceptionHandlerModule` now registers `APP_PIPE` (ValidationPipe) and `APP_INTERCEPTOR` (ErrorTemplateInterceptor) in addition to `APP_FILTER`
+- Express response fixture now merges custom locals with defaults instead of replacing them
+
+## [0.3.0] - 2025-12-03
+
+### Added
+- `NeomaException` interface for creating self-contained custom exceptions
+- `log(logger)` method support for custom logging behavior
+- Ability to disable logging entirely via empty `log()` implementation
+
 ## [0.2.0] - 2025-12-03
 
 ### Added
@@ -29,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Consistent JSON error responses for all exceptions
 - Duck-typed exception support - any object implementing `getStatus()` and `getResponse()` methods is handled automatically
 
-[Unreleased]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/shipdventures/neoma-exception-handling/releases/tag/v0.1.0

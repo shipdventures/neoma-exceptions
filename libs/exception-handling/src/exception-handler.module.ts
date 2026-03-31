@@ -1,6 +1,8 @@
-import { Module } from "@nestjs/common"
+import { Module, ValidationPipe } from "@nestjs/common"
+import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from "@nestjs/core"
 import { NeomaExceptionFilter } from "./filters/exception.filter"
-import { APP_FILTER } from "@nestjs/core"
+import { ErrorTemplateInterceptor } from "./interceptors/error-template.interceptor"
+import { validationFactory } from "./pipes/validation.factory"
 
 /**
  * Global exception handling module for NestJS applications.
@@ -9,9 +11,11 @@ import { APP_FILTER } from "@nestjs/core"
  * zero configuration required. Provides:
  * - Intelligent logging based on HTTP status codes
  * - Consistent JSON error responses
+ * - Content negotiation for HTML error rendering via {@link ErrorTemplate}
  * - Automatic handling of all exceptions (HTTP and unhandled)
  * - Support for request-scoped loggers via `req.logger`
  * - Custom exception behavior via the {@link NeomaException} interface
+ * - Global validation pipe with field-keyed error responses
  *
  * @example
  * ```typescript
@@ -45,11 +49,34 @@ import { APP_FILTER } from "@nestjs/core"
  * Implement the {@link NeomaException} interface for full control over
  * status codes, responses, and logging behavior. All methods are optional.
  *
+ * ## Content Negotiation
+ *
+ * Use the {@link ErrorTemplate} decorator on a route to render an HTML
+ * error page when the client accepts `text/html`. API requests continue
+ * to receive JSON responses.
+ *
+ * ## Validation
+ *
+ * A global `ValidationPipe` is registered with a custom factory that
+ * transforms validation errors into a field-keyed shape:
+ * ```json
+ * { "email": { "value": "bad", "error": "must be a valid email" } }
+ * ```
+ *
  * @see NeomaException for the custom exception interface
  * @see NeomaExceptionFilter for detailed behavior
+ * @see ErrorTemplate for HTML error rendering
+ * @see validationFactory for validation error transformation
  */
 @Module({
-  providers: [{ provide: APP_FILTER, useClass: NeomaExceptionFilter }],
+  providers: [
+    { provide: APP_FILTER, useClass: NeomaExceptionFilter },
+    {
+      provide: APP_PIPE,
+      useValue: new ValidationPipe({ exceptionFactory: validationFactory }),
+    },
+    { provide: APP_INTERCEPTOR, useClass: ErrorTemplateInterceptor },
+  ],
   exports: [],
 })
 export class ExceptionHandlerModule {}

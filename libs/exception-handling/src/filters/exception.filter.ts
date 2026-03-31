@@ -149,8 +149,23 @@ class LoggerWrapper {
  * }
  * ```
  *
+ * ## Content Negotiation
+ *
+ * When both conditions are met:
+ * 1. The request `Accept` header includes `text/html`
+ * 2. `res.locals.errorTemplate` is set (via the {@link ErrorTemplateInterceptor})
+ *
+ * The filter renders the template instead of returning JSON:
+ * ```typescript
+ * response.render(errorTemplate, { ...res.locals, exception: err.getResponse() })
+ * ```
+ *
+ * Otherwise, the default JSON response is used. API applications are
+ * completely unaffected.
+ *
  * @see NeomaException for the interface to implement
  * @see ExceptionHandlerModule for registration
+ * @see ErrorTemplate for the decorator that enables template rendering
  */
 @Catch()
 export class NeomaExceptionFilter implements ExceptionFilter {
@@ -162,7 +177,9 @@ export class NeomaExceptionFilter implements ExceptionFilter {
    * 500 Internal Server Error response.
    *
    * Logs the exception at the appropriate level based on status code,
-   * then sends the JSON response to the client.
+   * then responds to the client — rendering an error template when the
+   * request accepts HTML and an error template is set, or returning
+   * JSON otherwise.
    *
    * @param err - The caught exception. Can be any object with a `name` property.
    *              If it has `getStatus()` and `getResponse()` methods, they will be used.
@@ -206,6 +223,20 @@ export class NeomaExceptionFilter implements ExceptionFilter {
       logger.error(err, `[${err.getStatus!()}] Request failed - ${err.name}`)
     }
 
-    response.status(err.getStatus!()).json(err.getResponse!())
+    const acceptsHtml = request.headers?.accept?.includes("text/html")
+    const errorTemplate = response.locals?.errorTemplate
+
+    if (acceptsHtml && errorTemplate) {
+      logger.debug(
+        err,
+        `Rendering error template "${errorTemplate}" for [${err.getStatus!()}]`,
+      )
+      response.status(err.getStatus!()).render(errorTemplate, {
+        ...response.locals,
+        exception: err.getResponse!(),
+      })
+    } else {
+      response.status(err.getStatus!()).json(err.getResponse!())
+    }
   }
 }

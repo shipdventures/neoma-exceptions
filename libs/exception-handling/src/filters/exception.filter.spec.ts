@@ -623,4 +623,118 @@ describe("new NeomaExceptionFilter()", () => {
       })
     })
   })
+
+  describe("Content negotiation", () => {
+    const templateName = faker.system.directoryPath()
+
+    it("should render the error template when the request accepts HTML and an error template is set", () => {
+      const exception = new NotFoundException(faker.hacker.phrase())
+      const req = express.request({
+        headers: { accept: "text/html,application/xhtml+xml" },
+      })
+      const res = express.response({
+        locals: { errorTemplate: templateName, version: faker.system.semver() },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      const response = host.switchToHttp().getResponse()
+      expect(response.render).toHaveBeenCalledWith(templateName, {
+        ...res.locals,
+        exception: exception.getResponse(),
+      })
+      expect(response.json).not.toHaveBeenCalled()
+    })
+
+    it("should respond with JSON when the request accepts HTML but no error template is set", () => {
+      const exception = new NotFoundException(faker.hacker.phrase())
+      const req = express.request({
+        headers: { accept: "text/html,application/xhtml+xml" },
+      })
+      const host = executionContext(req) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      const response = host.switchToHttp().getResponse()
+      expect(response.json).toHaveBeenCalledWith(exception.getResponse())
+      expect(response.render).not.toHaveBeenCalled()
+    })
+
+    it("should respond with JSON when the request does not accept HTML even if an error template is set", () => {
+      const exception = new NotFoundException(faker.hacker.phrase())
+      const req = express.request({
+        headers: { accept: "application/json" },
+      })
+      const res = express.response({
+        locals: { errorTemplate: templateName },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      const response = host.switchToHttp().getResponse()
+      expect(response.json).toHaveBeenCalledWith(exception.getResponse())
+      expect(response.render).not.toHaveBeenCalled()
+    })
+
+    it("should respond with JSON when the request has no Accept header even if an error template is set", () => {
+      const exception = new NotFoundException(faker.hacker.phrase())
+      const req = express.request({ headers: {} })
+      const res = express.response({
+        locals: { errorTemplate: templateName },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      const response = host.switchToHttp().getResponse()
+      expect(response.json).toHaveBeenCalledWith(exception.getResponse())
+      expect(response.render).not.toHaveBeenCalled()
+    })
+
+    it("should log a debug message when rendering an error template", () => {
+      const exception = new BadRequestException(faker.hacker.phrase())
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response({
+        locals: { errorTemplate: templateName },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      expect(loggerSpy.debug).toHaveBeenCalledWith(
+        exception,
+        `Rendering error template "${templateName}" for [${exception.getStatus()}]`,
+        "NeomaExceptionFilter",
+      )
+    })
+
+    it("should render the error template for unhandled exceptions with a 500 status", () => {
+      const exception = new Error(faker.hacker.phrase())
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response({
+        locals: { errorTemplate: templateName },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      const response = host.switchToHttp().getResponse()
+      expect(response.statusCode).toBe(HttpStatus.INTERNAL_SERVER_ERROR)
+      expect(response.render).toHaveBeenCalledWith(templateName, {
+        ...res.locals,
+        exception: {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: "Internal server error",
+          error: "Internal Server Error",
+        },
+      })
+      expect(response.json).not.toHaveBeenCalled()
+    })
+  })
 })

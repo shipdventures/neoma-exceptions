@@ -122,14 +122,14 @@ export const express: ExpressFixtures = {
 
   response(
     {
-      locals = { layout: system.fileName() },
+      locals: customLocals,
       headers = {},
     }: Partial<Response & { headers?: Record<string, any> }> = {
-      locals: { layout: system.fileName() },
       headers: {},
     },
   ): Partial<Response> {
     const clonedHeaders = convertHeadersToLowerCase(headers)
+    const locals = { layout: system.fileName(), ...customLocals }
     return {
       getHeaders(): Record<string, any> {
         return clonedHeaders

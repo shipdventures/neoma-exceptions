@@ -9,7 +9,7 @@ This document captures the essential context and patterns established during the
 **Packages in roadmap**:
 1. ✅ `@neoma/config` - Environment configuration (COMPLETE v0.3.0)
 2. 🚧 `@neoma/logger` - Request/Application logging (NEXT)
-3. ⏳ Exception Handler - Consistent error responses
+3. ✅ `@neoma/exception-handling` - Exception handling, content negotiation, validation (v0.4.0)
 4. ⏳ Garmr (Sanctum for Nest) - Authentication
 5. ⏳ Stripe integration - Payment processing
 
