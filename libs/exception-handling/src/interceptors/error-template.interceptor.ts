@@ -13,11 +13,12 @@ import {
 
 /**
  * Global interceptor that reads the `"error-template"` metadata set by the
- * {@link ErrorTemplate} decorator and stashes it on `res.locals.errorTemplate`.
+ * {@link ErrorTemplate} decorator and stashes the {@link ErrorTemplateOptions}
+ * object on `res.locals.errorTemplate`.
  *
  * This bridges the gap between `ExecutionContext` (available in interceptors,
  * which has access to handler metadata) and `ArgumentsHost` (available in
- * exception filters, which does not). By storing the template name on
+ * exception filters, which does not). By storing the template configuration on
  * `res.locals`, the {@link NeomaExceptionFilter} can later read it to
  * decide whether to `render()` or `json()`.
  *
@@ -31,8 +32,8 @@ export class ErrorTemplateInterceptor implements NestInterceptor {
   public constructor(private readonly reflector: Reflector) {}
 
   /**
-   * Reads the `"error-template"` metadata from the current route handler
-   * and, if present, stores it on `res.locals.errorTemplate` before
+   * Reads the {@link ErrorTemplateOptions} metadata from the current route
+   * handler and, if present, stores it on `res.locals.errorTemplate` before
    * continuing the request pipeline.
    *
    * @param context - The execution context providing access to the handler and request/response.

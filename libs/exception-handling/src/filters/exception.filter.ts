@@ -155,9 +155,11 @@ class LoggerWrapper {
  * 1. The request `Accept` header includes `text/html`
  * 2. `res.locals.errorTemplate` is set (via the {@link ErrorTemplateInterceptor})
  *
- * The filter renders the template instead of returning JSON:
+ * The filter resolves the template name from the {@link ErrorTemplateOptions}
+ * object by matching `err.name` against the keys, falling back to `default`:
  * ```typescript
- * response.render(errorTemplate, { ...res.locals, exception: err.getResponse() })
+ * const templateName = errorTemplate[err.name] || errorTemplate.default
+ * response.render(templateName, { ...res.locals, exception: err.getResponse() })
  * ```
  *
  * Otherwise, the default JSON response is used. API applications are

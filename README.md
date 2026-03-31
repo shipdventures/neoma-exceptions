@@ -231,17 +231,26 @@ import { ErrorTemplate } from '@neoma/exception-handling'
 
 @Controller('auth')
 export class AuthController {
+  // Single template for all errors
   @ErrorTemplate('auth/magic-link')
   @Post('magic-link')
-  public sendMagicLink(@Body() dto: SendMagicLinkDto) {
-    // If this throws and the client accepts text/html,
-    // the 'auth/magic-link' template is rendered with:
-    // { ...res.locals, exception: err.getResponse() }
-    //
-    // API clients (Accept: application/json) get JSON as usual.
-  }
+  public sendMagicLink(@Body() dto: SendMagicLinkDto) {}
+
+  // Per-exception-type templates with a required default fallback
+  @ErrorTemplate({
+    BadRequestException: 'auth/login',
+    default: 'errors/500',
+  })
+  @Post('login')
+  public login(@Body() dto: LoginDto) {}
 }
 ```
+
+When an exception occurs and the client accepts `text/html`, the filter resolves the template:
+- **String**: renders that template for all errors
+- **Options object**: matches `err.name` against the keys, falls back to `default`
+
+API clients (`Accept: application/json`) always receive JSON as usual.
 
 The template receives `res.locals` spread into the render context, plus an `exception` property containing the error response object.
 
@@ -352,7 +361,7 @@ const filter = new NeomaExceptionFilter()
 
 ### `@ErrorTemplate(template)`
 
-Route decorator that enables HTML error rendering via content negotiation.
+Route decorator that enables HTML error rendering via content negotiation. Accepts a string or an `ErrorTemplateOptions` object.
 
 ```typescript
 import { ErrorTemplate } from '@neoma/exception-handling'
@@ -361,9 +370,18 @@ import { ErrorTemplate } from '@neoma/exception-handling'
 @ErrorTemplate('auth/login')
 @Post('login')
 public login(@Body() dto: LoginDto) {}
+
+// Per-exception-type templates (default is required)
+@ErrorTemplate({
+  BadRequestException: 'auth/login',
+  NotFoundException: 'errors/not-found',
+  default: 'errors/500',
+})
+@Post('checkout')
+public checkout(@Body() dto: CheckoutDto) {}
 ```
 
-When an exception occurs on a decorated route and the client sends `Accept: text/html`, the filter renders the specified template. API clients receive JSON as usual.
+When a string is passed, it is normalised to `{ default: template }` internally. The filter resolves the template by matching `err.name` against the keys, falling back to `default`. API clients receive JSON as usual.
 
 ### `ErrorTemplateInterceptor`
 
