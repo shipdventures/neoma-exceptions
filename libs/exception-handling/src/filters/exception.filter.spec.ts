@@ -741,4 +741,135 @@ describe("new NeomaExceptionFilter()", () => {
       expect(response.json).not.toHaveBeenCalled()
     })
   })
+
+  describe("Content negotiation with exception-specific templates", () => {
+    const badRequestTemplate = faker.system.directoryPath()
+    const serverErrorTemplate = faker.system.directoryPath()
+    const defaultTemplate = faker.system.directoryPath()
+    const multiTemplateOptions = {
+      BadRequestException: badRequestTemplate,
+      InternalServerErrorException: serverErrorTemplate,
+      default: defaultTemplate,
+    }
+
+    it("should render the matched template for a BadRequestException", () => {
+      const exception = new BadRequestException(faker.hacker.phrase())
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response({
+        locals: { errorTemplate: multiTemplateOptions },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      const response = host.switchToHttp().getResponse()
+      expect(response.render).toHaveBeenCalledWith(badRequestTemplate, {
+        ...res.locals,
+        exception: exception.getResponse(),
+      })
+      expect(response.json).not.toHaveBeenCalled()
+    })
+
+    it("should render the matched template for an InternalServerErrorException", () => {
+      const exception = new InternalServerErrorException(faker.hacker.phrase())
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response({
+        locals: { errorTemplate: multiTemplateOptions },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      const response = host.switchToHttp().getResponse()
+      expect(response.render).toHaveBeenCalledWith(serverErrorTemplate, {
+        ...res.locals,
+        exception: exception.getResponse(),
+      })
+      expect(response.json).not.toHaveBeenCalled()
+    })
+
+    it("should fall back to the default template for a NotFoundException with no matching key", () => {
+      const exception = new NotFoundException(faker.hacker.phrase())
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response({
+        locals: { errorTemplate: multiTemplateOptions },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      const response = host.switchToHttp().getResponse()
+      expect(response.render).toHaveBeenCalledWith(defaultTemplate, {
+        ...res.locals,
+        exception: exception.getResponse(),
+      })
+      expect(response.json).not.toHaveBeenCalled()
+    })
+
+    it("should fall back to the default template for an unhandled Error", () => {
+      const exception = new Error(faker.hacker.phrase())
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response({
+        locals: { errorTemplate: multiTemplateOptions },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      const response = host.switchToHttp().getResponse()
+      expect(response.render).toHaveBeenCalledWith(defaultTemplate, {
+        ...res.locals,
+        exception: {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: "Internal server error",
+          error: "Internal Server Error",
+        },
+      })
+      expect(response.json).not.toHaveBeenCalled()
+    })
+
+    it("should respond with JSON when the request does not accept HTML", () => {
+      const exception = new BadRequestException(faker.hacker.phrase())
+      const req = express.request({
+        headers: { accept: "application/json" },
+      })
+      const res = express.response({
+        locals: { errorTemplate: multiTemplateOptions },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      const response = host.switchToHttp().getResponse()
+      expect(response.json).toHaveBeenCalledWith(exception.getResponse())
+      expect(response.render).not.toHaveBeenCalled()
+    })
+
+    it("should log the resolved template name in the debug message", () => {
+      const exception = new BadRequestException(faker.hacker.phrase())
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response({
+        locals: { errorTemplate: multiTemplateOptions },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      expect(loggerSpy.debug).toHaveBeenCalledWith(
+        exception,
+        `Rendering error template "${badRequestTemplate}" for [${exception.getStatus()}]`,
+        "NeomaExceptionFilter",
+      )
+    })
+  })
 })
