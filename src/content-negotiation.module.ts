@@ -61,6 +61,32 @@ class ContentNegotiationController {
   public withTemplateAndValidation(@Body() _dto: TestDto): void {
     return
   }
+
+  @ErrorTemplate("with-locals", {
+    formAction: "/auth/magic-link",
+    pageTitle: "Sign In",
+  })
+  @Post("with-template-and-locals")
+  public withTemplateAndLocals(): void {
+    throw new BadRequestException("Invalid credentials")
+  }
+
+  @ErrorTemplate(
+    {
+      BadRequestException: "with-locals",
+      default: "error",
+    },
+    { formAction: "/checkout", pageTitle: "Checkout" },
+  )
+  @Post("with-multi-template-and-locals")
+  public withMultiTemplateAndLocals(@Query("type") type: string): void {
+    switch (type) {
+      case "bad-request":
+        throw new BadRequestException("Validation failed")
+      default:
+        throw new Error("Unhandled error")
+    }
+  }
 }
 
 @Module({

@@ -17,11 +17,17 @@ import { ErrorTemplateInterceptor } from "./error-template.interceptor"
 const { system } = faker
 const controllerPath = system.directoryPath()
 
-const withStringPath = system.directoryPath()
-const withOptionsPath = system.directoryPath()
-const withoutTemplatePath = system.directoryPath()
+const withStringPath = `/${faker.string.uuid()}`
+const withOptionsPath = `/${faker.string.uuid()}`
+const withStringAndLocalsPath = `/${faker.string.uuid()}`
+const withOptionsAndLocalsPath = `/${faker.string.uuid()}`
+const withoutTemplatePath = `/${faker.string.uuid()}`
 
 const templateName = `${system.directoryPath()}/${faker.hacker.noun()}`
+const locals = {
+  formAction: faker.internet.url(),
+  pageTitle: faker.lorem.words(),
+}
 
 @Controller(controllerPath)
 class ControllerClass {
@@ -39,10 +45,37 @@ class ControllerClass {
     return { errorTemplate: res.locals.errorTemplate }
   }
 
+  @ErrorTemplate(templateName, locals)
+  @Get(withStringAndLocalsPath)
+  @UseInterceptors(ErrorTemplateInterceptor)
+  public withStringAndLocals(
+    @Res({ passthrough: true }) res: Response,
+  ): object {
+    return {
+      errorTemplate: res.locals.errorTemplate,
+      errorTemplateLocals: res.locals.errorTemplateLocals,
+    }
+  }
+
+  @ErrorTemplate({ default: templateName }, locals)
+  @Get(withOptionsAndLocalsPath)
+  @UseInterceptors(ErrorTemplateInterceptor)
+  public withOptionsAndLocals(
+    @Res({ passthrough: true }) res: Response,
+  ): object {
+    return {
+      errorTemplate: res.locals.errorTemplate,
+      errorTemplateLocals: res.locals.errorTemplateLocals,
+    }
+  }
+
   @Get(withoutTemplatePath)
   @UseInterceptors(ErrorTemplateInterceptor)
   public withoutTemplate(@Res({ passthrough: true }) res: Response): object {
-    return { errorTemplate: res.locals.errorTemplate }
+    return {
+      errorTemplate: res.locals.errorTemplate,
+      errorTemplateLocals: res.locals.errorTemplateLocals,
+    }
   }
 }
 
@@ -83,11 +116,30 @@ describe("ErrorTemplateInterceptor", () => {
     expect(response.body.errorTemplate).toEqual({ default: templateName })
   })
 
+  it("should set res.locals.errorTemplateLocals when @ErrorTemplate is passed a string and locals", async () => {
+    const response = await supertest(app.getHttpServer())
+      .get(`${controllerPath}${withStringAndLocalsPath}`)
+      .expect(HttpStatus.OK)
+
+    expect(response.body.errorTemplate).toEqual({ default: templateName })
+    expect(response.body.errorTemplateLocals).toEqual(locals)
+  })
+
+  it("should set res.locals.errorTemplateLocals when @ErrorTemplate is passed options and locals", async () => {
+    const response = await supertest(app.getHttpServer())
+      .get(`${controllerPath}${withOptionsAndLocalsPath}`)
+      .expect(HttpStatus.OK)
+
+    expect(response.body.errorTemplate).toEqual({ default: templateName })
+    expect(response.body.errorTemplateLocals).toEqual(locals)
+  })
+
   it("should not set res.locals.errorTemplate when @ErrorTemplate is not present", async () => {
     const response = await supertest(app.getHttpServer())
       .get(`${controllerPath}${withoutTemplatePath}`)
       .expect(HttpStatus.OK)
 
     expect(response.body.errorTemplate).toBeUndefined()
+    expect(response.body.errorTemplateLocals).toBeUndefined()
   })
 })
