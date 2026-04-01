@@ -7,18 +7,31 @@ import { SetMetadata } from "@nestjs/common"
 export const ERROR_TEMPLATE_KEY = "error-template"
 
 /**
+ * Maps exception names to template paths, with a required `default` fallback.
+ *
+ * Keys are matched against `err.name` (e.g. `"BadRequestException"`,
+ * `"Error"`). If no key matches, the `default` template is used.
+ */
+export interface ErrorTemplateOptions {
+  default: string
+  [exceptionName: string]: string
+}
+
+/**
  * Route decorator that specifies which template to render when an exception
  * occurs on this endpoint and the client accepts HTML.
  *
- * The template name is stored as route metadata under the key
- * {@link ERROR_TEMPLATE_KEY}. The {@link ErrorTemplateInterceptor} reads this
- * metadata and stashes it on `res.locals.errorTemplate` so that the
- * {@link NeomaExceptionFilter} can content-negotiate between `render()` and
- * `json()`.
+ * The template configuration is normalised to an {@link ErrorTemplateOptions}
+ * object and stored as route metadata under the key {@link ERROR_TEMPLATE_KEY}.
+ * The {@link ErrorTemplateInterceptor} reads this metadata and stashes it on
+ * `res.locals.errorTemplate` so that the {@link NeomaExceptionFilter} can
+ * content-negotiate between `render()` and `json()`.
  *
- * @param template - The view template path to render on error (e.g. `"auth/magic-link"`).
+ * @param template - A single template path for all errors, or an
+ *                   {@link ErrorTemplateOptions} object mapping exception names
+ *                   to templates with a required `default` fallback.
  *
- * @example
+ * @example Single template for all errors
  * ```typescript
  * import { ErrorTemplate } from '@neoma/exception-handling'
  *
@@ -29,6 +42,26 @@ export const ERROR_TEMPLATE_KEY = "error-template"
  *   public sendMagicLink(@Body() dto: SendMagicLinkDto) {}
  * }
  * ```
+ *
+ * @example Per-exception-type templates
+ * ```typescript
+ * import { ErrorTemplate } from '@neoma/exception-handling'
+ *
+ * @Controller('auth')
+ * export class AuthController {
+ *   @ErrorTemplate({
+ *     BadRequestException: 'auth/magic-link',
+ *     default: 'errors/500',
+ *   })
+ *   @Post('magic-link')
+ *   public sendMagicLink(@Body() dto: SendMagicLinkDto) {}
+ * }
+ * ```
  */
-export const ErrorTemplate = (template: string): MethodDecorator =>
-  SetMetadata(ERROR_TEMPLATE_KEY, template)
+export const ErrorTemplate = (
+  template: string | ErrorTemplateOptions,
+): MethodDecorator =>
+  SetMetadata(
+    ERROR_TEMPLATE_KEY,
+    typeof template === "string" ? { default: template } : template,
+  )

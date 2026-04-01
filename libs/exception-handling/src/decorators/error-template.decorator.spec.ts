@@ -1,7 +1,11 @@
 import { faker } from "@faker-js/faker"
 import { Controller, Get } from "@nestjs/common"
 import { Reflector } from "@nestjs/core"
-import { ErrorTemplate, ERROR_TEMPLATE_KEY } from "./error-template.decorator"
+import {
+  ErrorTemplate,
+  ErrorTemplateOptions,
+  ERROR_TEMPLATE_KEY,
+} from "./error-template.decorator"
 
 const templateName = faker.system.filePath()
 
@@ -9,7 +13,11 @@ const templateName = faker.system.filePath()
 class TestController {
   @ErrorTemplate(templateName)
   @Get()
-  public handler(): void {}
+  public handlerWithString(): void {}
+
+  @ErrorTemplate({ default: templateName })
+  @Get("with-options")
+  public handlerWithOptions(): void {}
 
   @Get("no-template")
   public handlerWithoutTemplate(): void {}
@@ -18,17 +26,26 @@ class TestController {
 describe("@ErrorTemplate", () => {
   const reflector = new Reflector()
 
-  it("should set the error template metadata on the handler", () => {
-    const metadata = reflector.get<string>(
+  it("should normalise a string to an ErrorTemplateOptions object", () => {
+    const metadata = reflector.get<ErrorTemplateOptions>(
       ERROR_TEMPLATE_KEY,
-      TestController.prototype.handler,
+      TestController.prototype.handlerWithString,
     )
 
-    expect(metadata).toBe(templateName)
+    expect(metadata).toEqual({ default: templateName })
+  })
+
+  it("should store an ErrorTemplateOptions object as-is", () => {
+    const metadata = reflector.get<ErrorTemplateOptions>(
+      ERROR_TEMPLATE_KEY,
+      TestController.prototype.handlerWithOptions,
+    )
+
+    expect(metadata).toEqual({ default: templateName })
   })
 
   it("should not set metadata on handlers without the decorator", () => {
-    const metadata = reflector.get<string>(
+    const metadata = reflector.get<ErrorTemplateOptions>(
       ERROR_TEMPLATE_KEY,
       TestController.prototype.handlerWithoutTemplate,
     )

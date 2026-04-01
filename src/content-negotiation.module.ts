@@ -2,9 +2,11 @@ import {
   BadRequestException,
   Body,
   Controller,
+  InternalServerErrorException,
   Module,
   NotFoundException,
   Post,
+  Query,
 } from "@nestjs/common"
 import { IsEmail, MinLength } from "class-validator"
 import { ExceptionHandlerModule, ErrorTemplate } from "@lib"
@@ -23,6 +25,29 @@ class ContentNegotiationController {
   @Post("with-template")
   public withTemplate(): void {
     throw new NotFoundException("Not found")
+  }
+
+  @ErrorTemplate({ default: "error" })
+  @Post("with-default-template")
+  public withDefaultTemplate(): void {
+    throw new NotFoundException("Not found")
+  }
+
+  @ErrorTemplate({
+    BadRequestException: "bad-request",
+    InternalServerErrorException: "server-error",
+    default: "error",
+  })
+  @Post("with-multi-template")
+  public withMultiTemplate(@Query("type") type: string): void {
+    switch (type) {
+      case "bad-request":
+        throw new BadRequestException("Bad request")
+      case "server-error":
+        throw new InternalServerErrorException("Server error")
+      default:
+        throw new Error("Unhandled error")
+    }
   }
 
   @Post("without-template")

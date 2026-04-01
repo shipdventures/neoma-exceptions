@@ -17,7 +17,8 @@ import { ErrorTemplateInterceptor } from "./error-template.interceptor"
 const { system } = faker
 const controllerPath = system.directoryPath()
 
-const withTemplatePath = system.directoryPath()
+const withStringPath = system.directoryPath()
+const withOptionsPath = system.directoryPath()
 const withoutTemplatePath = system.directoryPath()
 
 const templateName = `${system.directoryPath()}/${faker.hacker.noun()}`
@@ -25,9 +26,16 @@ const templateName = `${system.directoryPath()}/${faker.hacker.noun()}`
 @Controller(controllerPath)
 class ControllerClass {
   @ErrorTemplate(templateName)
-  @Get(withTemplatePath)
+  @Get(withStringPath)
   @UseInterceptors(ErrorTemplateInterceptor)
-  public withTemplate(@Res({ passthrough: true }) res: Response): object {
+  public withString(@Res({ passthrough: true }) res: Response): object {
+    return { errorTemplate: res.locals.errorTemplate }
+  }
+
+  @ErrorTemplate({ default: templateName })
+  @Get(withOptionsPath)
+  @UseInterceptors(ErrorTemplateInterceptor)
+  public withOptions(@Res({ passthrough: true }) res: Response): object {
     return { errorTemplate: res.locals.errorTemplate }
   }
 
@@ -59,12 +67,20 @@ describe("ErrorTemplateInterceptor", () => {
     await app.close()
   })
 
-  it("should set res.locals.errorTemplate when @ErrorTemplate is present", async () => {
+  it("should set res.locals.errorTemplate to a normalised object when @ErrorTemplate is passed a string", async () => {
     const response = await supertest(app.getHttpServer())
-      .get(`${controllerPath}${withTemplatePath}`)
+      .get(`${controllerPath}${withStringPath}`)
       .expect(HttpStatus.OK)
 
-    expect(response.body.errorTemplate).toBe(templateName)
+    expect(response.body.errorTemplate).toEqual({ default: templateName })
+  })
+
+  it("should set res.locals.errorTemplate to the options object when @ErrorTemplate is passed an object", async () => {
+    const response = await supertest(app.getHttpServer())
+      .get(`${controllerPath}${withOptionsPath}`)
+      .expect(HttpStatus.OK)
+
+    expect(response.body.errorTemplate).toEqual({ default: templateName })
   })
 
   it("should not set res.locals.errorTemplate when @ErrorTemplate is not present", async () => {
