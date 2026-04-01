@@ -19,6 +19,10 @@ const serverErrorTemplate = readFileSync(
   join(process.cwd(), "specs", "views", "server-error.ejs"),
   "utf-8",
 )
+const withLocalsTemplate = readFileSync(
+  join(process.cwd(), "specs", "views", "with-locals.ejs"),
+  "utf-8",
+)
 
 const configureViewEngine = (app: any): void => {
   const expressApp = app as unknown as NestExpressApplication
@@ -221,6 +225,101 @@ describe("Content Negotiation", () => {
     it("should respond with JSON when the request accepts application/json", async () => {
       await request(app.getHttpServer())
         .post("/with-multi-template")
+        .query({ type: "bad-request" })
+        .set("Accept", "application/json")
+        .expect(HttpStatus.BAD_REQUEST)
+        .expect("Content-Type", /json/)
+    })
+  })
+
+  describe("When the route has @ErrorTemplate with static locals", () => {
+    it("should render the template with errorTemplateLocals available", async () => {
+      const exception = {
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: "Invalid credentials",
+        error: "Bad Request",
+      }
+      const expectedHtml = ejs.render(withLocalsTemplate, {
+        errorTemplate: { default: "with-locals" },
+        errorTemplateLocals: {
+          formAction: "/auth/magic-link",
+          pageTitle: "Sign In",
+        },
+        exception,
+      })
+
+      await request(app.getHttpServer())
+        .post("/with-template-and-locals")
+        .set("Accept", "text/html")
+        .expect(HttpStatus.BAD_REQUEST)
+        .expect(expectedHtml)
+    })
+
+    it("should respond with JSON when the request accepts application/json", async () => {
+      await request(app.getHttpServer())
+        .post("/with-template-and-locals")
+        .set("Accept", "application/json")
+        .expect(HttpStatus.BAD_REQUEST)
+        .expect("Content-Type", /json/)
+    })
+  })
+
+  describe("When the route has @ErrorTemplate with exception-specific templates and static locals", () => {
+    it("should render the matched template with errorTemplateLocals available", async () => {
+      const exception = {
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: "Validation failed",
+        error: "Bad Request",
+      }
+      const expectedHtml = ejs.render(withLocalsTemplate, {
+        errorTemplate: {
+          BadRequestException: "with-locals",
+          default: "error",
+        },
+        errorTemplateLocals: {
+          formAction: "/checkout",
+          pageTitle: "Checkout",
+        },
+        exception,
+      })
+
+      await request(app.getHttpServer())
+        .post("/with-multi-template-and-locals")
+        .query({ type: "bad-request" })
+        .set("Accept", "text/html")
+        .expect(HttpStatus.BAD_REQUEST)
+        .expect(expectedHtml)
+    })
+
+    it("should render the default template with errorTemplateLocals available for unmatched exceptions", async () => {
+      const exception = {
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "Internal server error",
+        error: "Internal Server Error",
+      }
+      const expectedHtml = ejs.render(errorTemplate, {
+        errorTemplate: {
+          BadRequestException: "with-locals",
+          default: "error",
+        },
+        errorTemplateLocals: {
+          formAction: "/checkout",
+          pageTitle: "Checkout",
+        },
+        exception,
+      })
+
+      await request(app.getHttpServer())
+        .post("/with-multi-template-and-locals")
+        .query({ type: "unhandled" })
+        .set("Accept", "text/html")
+        .expect(HttpStatus.INTERNAL_SERVER_ERROR)
+        .expect(expectedHtml)
+    })
+
+    it("should respond with JSON when the request accepts application/json", async () => {
+      await request(app.getHttpServer())
+        .post("/with-multi-template-and-locals")
         .query({ type: "bad-request" })
         .set("Accept", "application/json")
         .expect(HttpStatus.BAD_REQUEST)

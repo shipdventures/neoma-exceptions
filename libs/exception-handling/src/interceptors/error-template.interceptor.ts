@@ -8,13 +8,14 @@ import { Reflector } from "@nestjs/core"
 import { Observable } from "rxjs"
 import {
   ERROR_TEMPLATE_KEY,
-  ErrorTemplateOptions,
+  ErrorTemplateMetadata,
 } from "../decorators/error-template.decorator"
 
 /**
  * Global interceptor that reads the `"error-template"` metadata set by the
  * {@link ErrorTemplate} decorator and stashes the {@link ErrorTemplateOptions}
- * object on `res.locals.errorTemplate`.
+ * object on `res.locals.errorTemplate` and any static locals on
+ * `res.locals.errorTemplateLocals`.
  *
  * This bridges the gap between `ExecutionContext` (available in interceptors,
  * which has access to handler metadata) and `ArgumentsHost` (available in
@@ -32,8 +33,9 @@ export class ErrorTemplateInterceptor implements NestInterceptor {
   public constructor(private readonly reflector: Reflector) {}
 
   /**
-   * Reads the {@link ErrorTemplateOptions} metadata from the current route
-   * handler and, if present, stores it on `res.locals.errorTemplate` before
+   * Reads the {@link ErrorTemplateMetadata} from the current route handler
+   * and, if present, stores the template options on `res.locals.errorTemplate`
+   * and any static locals on `res.locals.errorTemplateLocals` before
    * continuing the request pipeline.
    *
    * @param context - The execution context providing access to the handler and request/response.
@@ -44,14 +46,15 @@ export class ErrorTemplateInterceptor implements NestInterceptor {
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<any> {
-    const template = this.reflector.get<ErrorTemplateOptions>(
+    const metadata = this.reflector.get<ErrorTemplateMetadata>(
       ERROR_TEMPLATE_KEY,
       context.getHandler(),
     )
 
-    if (template) {
+    if (metadata) {
       const response = context.switchToHttp().getResponse()
-      response.locals.errorTemplate = template
+      response.locals.errorTemplate = metadata.templates
+      response.locals.errorTemplateLocals = metadata.locals
     }
 
     return next.handle()

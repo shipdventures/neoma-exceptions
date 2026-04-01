@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Optional `locals` parameter on `@ErrorTemplate` for passing static, per-route variables to templates (available as `errorTemplateLocals` in the render context)
+
 ## [0.4.0] - 2026-03-31
 
 ### Added

@@ -243,6 +243,14 @@ export class AuthController {
   })
   @Post('login')
   public login(@Body() dto: LoginDto) {}
+
+  // Template with static locals
+  @ErrorTemplate('auth/magic-link', {
+    formAction: '/auth/magic-link',
+    pageTitle: 'Sign In',
+  })
+  @Post('magic-link')
+  public sendMagicLink(@Body() dto: SendMagicLinkDto) {}
 }
 ```
 
@@ -253,6 +261,30 @@ When an exception occurs and the client accepts `text/html`, the filter resolves
 API clients (`Accept: application/json`) always receive JSON as usual.
 
 The template receives `res.locals` spread into the render context, plus an `exception` property containing the error response object.
+
+### Static Template Locals
+
+Pass an optional second argument to `@ErrorTemplate` to provide static, per-route variables to the template. These are available under `errorTemplateLocals`:
+
+```typescript
+@ErrorTemplate('auth/magic-link', {
+  formAction: '/auth/magic-link',
+  pageTitle: 'Sign In',
+})
+@Post('magic-link')
+public sendMagicLink(@Body() dto: SendMagicLinkDto) {}
+```
+
+In your template:
+
+```ejs
+<h1><%= errorTemplateLocals.pageTitle %></h1>
+<form action="<%= errorTemplateLocals.formAction %>">
+  <p><%= exception.message %></p>
+</form>
+```
+
+Static locals are namespaced under `errorTemplateLocals` to avoid overwriting request-scoped values set by middleware (e.g. i18n, auth state). For request-scoped template variables, use middleware to set `res.locals` directly.
 
 ## Logging
 
@@ -359,9 +391,9 @@ import { NeomaExceptionFilter } from '@neoma/exception-handling'
 const filter = new NeomaExceptionFilter()
 ```
 
-### `@ErrorTemplate(template)`
+### `@ErrorTemplate(template, locals?)`
 
-Route decorator that enables HTML error rendering via content negotiation. Accepts a string or an `ErrorTemplateOptions` object.
+Route decorator that enables HTML error rendering via content negotiation. Accepts a string or an `ErrorTemplateOptions` object, with an optional second argument for static template locals.
 
 ```typescript
 import { ErrorTemplate } from '@neoma/exception-handling'
@@ -379,13 +411,23 @@ public login(@Body() dto: LoginDto) {}
 })
 @Post('checkout')
 public checkout(@Body() dto: CheckoutDto) {}
+
+// Template with static locals
+@ErrorTemplate('auth/magic-link', {
+  formAction: '/auth/magic-link',
+  pageTitle: 'Sign In',
+})
+@Post('magic-link')
+public sendMagicLink(@Body() dto: SendMagicLinkDto) {}
 ```
 
 When a string is passed, it is normalised to `{ default: template }` internally. The filter resolves the template by matching `err.name` against the keys, falling back to `default`. API clients receive JSON as usual.
 
+Static locals are available in templates under `errorTemplateLocals` (e.g. `errorTemplateLocals.formAction`).
+
 ### `ErrorTemplateInterceptor`
 
-Global interceptor that reads `@ErrorTemplate` metadata and stores it on `res.locals.errorTemplate`. Automatically registered by `ExceptionHandlerModule` - you don't need to interact with this directly.
+Global interceptor that reads `@ErrorTemplate` metadata and stores the template options on `res.locals.errorTemplate` and any static locals on `res.locals.errorTemplateLocals`. Automatically registered by `ExceptionHandlerModule` - you don't need to interact with this directly.
 
 ### `validationFactory`
 
