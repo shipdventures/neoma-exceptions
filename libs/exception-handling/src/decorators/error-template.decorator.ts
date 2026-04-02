@@ -7,10 +7,14 @@ import { SetMetadata } from "@nestjs/common"
 export const ERROR_TEMPLATE_KEY = "error-template"
 
 /**
- * Maps exception names to template paths, with a required `default` fallback.
+ * Maps exception names to template paths or redirect routes, with a required
+ * `default` fallback.
  *
  * Keys are matched against `err.name` (e.g. `"BadRequestException"`,
  * `"Error"`). If no key matches, the `default` template is used.
+ *
+ * Values starting with `/` trigger a `303 See Other` redirect instead of
+ * rendering a template.
  */
 export interface ErrorTemplateOptions {
   default: string
@@ -68,6 +72,21 @@ export interface ErrorTemplateMetadata {
  *   @ErrorTemplate({
  *     BadRequestException: 'auth/magic-link',
  *     default: 'errors/500',
+ *   })
+ *   @Post('magic-link')
+ *   public sendMagicLink(@Body() dto: SendMagicLinkDto) {}
+ * }
+ * ```
+ *
+ * @example Per-exception rendering with redirect fallback
+ * ```typescript
+ * import { ErrorTemplate } from '@neoma/exception-handling'
+ *
+ * @Controller('auth')
+ * export class AuthController {
+ *   @ErrorTemplate({
+ *     BadRequestException: 'auth/magic-link',
+ *     default: '/error',
  *   })
  *   @Post('magic-link')
  *   public sendMagicLink(@Body() dto: SendMagicLinkDto) {}

@@ -257,6 +257,14 @@ export class AuthController {
 When an exception occurs and the client accepts `text/html`, the filter resolves the template:
 - **String**: renders that template for all errors
 - **Options object**: matches `err.name` against the keys, falls back to `default`
+- **`/` prefix**: values starting with `/` trigger a `303 See Other` redirect instead of rendering
+
+```typescript
+@ErrorTemplate({
+  BadRequestException: 'auth/magic-link',   // renders template
+  default: '/error',                         // redirects to /error
+})
+```
 
 API clients (`Accept: application/json`) always receive JSON as usual.
 
@@ -421,7 +429,7 @@ public checkout(@Body() dto: CheckoutDto) {}
 public sendMagicLink(@Body() dto: SendMagicLinkDto) {}
 ```
 
-When a string is passed, it is normalised to `{ default: template }` internally. The filter resolves the template by matching `err.name` against the keys, falling back to `default`. API clients receive JSON as usual.
+When a string is passed, it is normalised to `{ default: template }` internally. The filter resolves the template by matching `err.name` against the keys, falling back to `default`. Values starting with `/` trigger a `303 See Other` redirect instead of rendering. API clients receive JSON as usual.
 
 Static locals are available in templates under `errorTemplateLocals` (e.g. `errorTemplateLocals.formAction`).
 
