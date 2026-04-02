@@ -876,7 +876,7 @@ describe("new NeomaExceptionFilter()", () => {
   describe("Content negotiation with redirect templates", () => {
     const exception = new InternalServerErrorException(faker.hacker.phrase())
 
-    it("should redirect with 303 when the resolved template starts with /", () => {
+    it("should redirect with 303 See Other when the resolved template starts with /", () => {
       const req = express.request({
         headers: { accept: "text/html" },
       })
@@ -888,7 +888,7 @@ describe("new NeomaExceptionFilter()", () => {
       filter.catch(exception, host)
 
       expect(host.switchToHttp().getResponse().redirect).toHaveBeenCalledWith(
-        303,
+        HttpStatus.SEE_OTHER,
         "/error",
       )
     })
@@ -924,7 +924,7 @@ describe("new NeomaExceptionFilter()", () => {
       filter.catch(exception, host)
 
       expect(host.switchToHttp().getResponse().redirect).toHaveBeenCalledWith(
-        303,
+        HttpStatus.SEE_OTHER,
         "/server-error",
       )
     })
@@ -946,7 +946,7 @@ describe("new NeomaExceptionFilter()", () => {
       filter.catch(exception, host)
 
       expect(host.switchToHttp().getResponse().redirect).toHaveBeenCalledWith(
-        303,
+        HttpStatus.SEE_OTHER,
         "/error",
       )
     })

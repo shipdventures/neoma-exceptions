@@ -242,7 +242,7 @@ export class NeomaExceptionFilter implements ExceptionFilter {
           err,
           `Redirecting to "${templateName}" for [${err.getStatus!()}]`,
         )
-        response.redirect(303, templateName)
+        response.redirect(HttpStatus.SEE_OTHER, templateName)
       } else {
         logger.debug(
           err,
