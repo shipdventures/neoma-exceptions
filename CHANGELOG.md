@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-02
+
+### Added
+- Redirect support in `@ErrorTemplate` — template values starting with `/` trigger a `303 See Other` redirect instead of rendering
+
 ## [0.5.0] - 2026-04-01
 
 ### Added
@@ -57,7 +62,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Consistent JSON error responses for all exceptions
 - Duck-typed exception support - any object implementing `getStatus()` and `getResponse()` methods is handled automatically
 
-[Unreleased]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.2.0...v0.3.0
