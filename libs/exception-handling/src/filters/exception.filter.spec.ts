@@ -625,7 +625,7 @@ describe("new NeomaExceptionFilter()", () => {
   })
 
   describe("Content negotiation", () => {
-    const templateName = faker.system.directoryPath()
+    const templateName = `${faker.word.noun()}/${faker.word.noun()}`
     const errorTemplateOptions = { default: templateName }
 
     it("should render the error template when the request accepts HTML and an error template is set", () => {
@@ -743,9 +743,9 @@ describe("new NeomaExceptionFilter()", () => {
   })
 
   describe("Content negotiation with exception-specific templates", () => {
-    const badRequestTemplate = faker.system.directoryPath()
-    const serverErrorTemplate = faker.system.directoryPath()
-    const defaultTemplate = faker.system.directoryPath()
+    const badRequestTemplate = `${faker.word.noun()}/${faker.word.noun()}`
+    const serverErrorTemplate = `${faker.word.noun()}/${faker.word.noun()}`
+    const defaultTemplate = `${faker.word.noun()}/${faker.word.noun()}`
     const multiTemplateOptions = {
       BadRequestException: badRequestTemplate,
       InternalServerErrorException: serverErrorTemplate,
@@ -868,6 +868,103 @@ describe("new NeomaExceptionFilter()", () => {
       expect(loggerSpy.debug).toHaveBeenCalledWith(
         exception,
         `Rendering error template "${badRequestTemplate}" for [${exception.getStatus()}]`,
+        "NeomaExceptionFilter",
+      )
+    })
+  })
+
+  describe("Content negotiation with redirect templates", () => {
+    const exception = new InternalServerErrorException(faker.hacker.phrase())
+
+    it("should redirect with 303 See Other when the resolved template starts with /", () => {
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response({
+        locals: { errorTemplate: { default: "/error" } },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      expect(host.switchToHttp().getResponse().redirect).toHaveBeenCalledWith(
+        HttpStatus.SEE_OTHER,
+        "/error",
+      )
+    })
+
+    it("should not render when the resolved template starts with /", () => {
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response({
+        locals: { errorTemplate: { default: "/error" } },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      expect(host.switchToHttp().getResponse().render).not.toHaveBeenCalled()
+    })
+
+    it("should redirect for a matched exception whose template starts with /", () => {
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response({
+        locals: {
+          errorTemplate: {
+            InternalServerErrorException: "/server-error",
+            default: "errors/500",
+          },
+        },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      expect(host.switchToHttp().getResponse().redirect).toHaveBeenCalledWith(
+        HttpStatus.SEE_OTHER,
+        "/server-error",
+      )
+    })
+
+    it("should redirect for the default when no exception matches and default starts with /", () => {
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response({
+        locals: {
+          errorTemplate: {
+            BadRequestException: "auth/magic-link",
+            default: "/error",
+          },
+        },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      expect(host.switchToHttp().getResponse().redirect).toHaveBeenCalledWith(
+        HttpStatus.SEE_OTHER,
+        "/error",
+      )
+    })
+
+    it("should log a debug message when redirecting", () => {
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response({
+        locals: { errorTemplate: { default: "/error" } },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(exception, host)
+
+      expect(loggerSpy.debug).toHaveBeenCalledWith(
+        exception,
+        `Redirecting to "/error" for [${exception.getStatus()}]`,
         "NeomaExceptionFilter",
       )
     })

@@ -159,7 +159,13 @@ class LoggerWrapper {
  * object by matching `err.name` against the keys, falling back to `default`:
  * ```typescript
  * const templateName = errorTemplate[err.name] || errorTemplate.default
- * response.render(templateName, { ...res.locals, exception: err.getResponse() })
+ * ```
+ *
+ * If the resolved template starts with `/`, the filter issues a `303 See Other`
+ * redirect to that path instead of rendering. This is useful when the error
+ * page lives at its own route (e.g. `/error`):
+ * ```typescript
+ * @ErrorTemplate({ BadRequestException: 'auth/form', default: '/error' })
  * ```
  *
  * Otherwise, the default JSON response is used. API applications are
@@ -230,14 +236,23 @@ export class NeomaExceptionFilter implements ExceptionFilter {
 
     if (acceptsHtml && errorTemplate) {
       const templateName = errorTemplate[err.name] || errorTemplate.default
-      logger.debug(
-        err,
-        `Rendering error template "${templateName}" for [${err.getStatus!()}]`,
-      )
-      response.status(err.getStatus!()).render(templateName, {
-        ...response.locals,
-        exception: err.getResponse!(),
-      })
+
+      if (templateName.startsWith("/")) {
+        logger.debug(
+          err,
+          `Redirecting to "${templateName}" for [${err.getStatus!()}]`,
+        )
+        response.redirect(HttpStatus.SEE_OTHER, templateName)
+      } else {
+        logger.debug(
+          err,
+          `Rendering error template "${templateName}" for [${err.getStatus!()}]`,
+        )
+        response.status(err.getStatus!()).render(templateName, {
+          ...response.locals,
+          exception: err.getResponse!(),
+        })
+      }
     } else {
       response.status(err.getStatus!()).json(err.getResponse!())
     }
