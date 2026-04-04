@@ -127,13 +127,15 @@ export interface NeomaException {
    *
    * @example
    * ```typescript
+   * import { HttpStatus } from '@nestjs/common'
+   *
    * export class UnauthenticatedException extends Error implements NeomaException {
    *   public getStatus(): number {
-   *     return 401
+   *     return HttpStatus.UNAUTHORIZED
    *   }
    *
    *   public getRedirect(): { status: number; url: string } {
-   *     return { status: 303, url: '/login' }
+   *     return { status: HttpStatus.SEE_OTHER, url: '/login' }
    *   }
    * }
    * ```

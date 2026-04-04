@@ -163,9 +163,11 @@ class LoggerWrapper {
  * the filter logs a warning and falls through to default handling.
  *
  * ```typescript
+ * import { HttpStatus } from '@nestjs/common'
+ *
  * export class UnauthenticatedException extends Error implements NeomaException {
  *   public getRedirect(): { status: number; url: string } {
- *     return { status: 303, url: '/login' }
+ *     return { status: HttpStatus.SEE_OTHER, url: '/login' }
  *   }
  * }
  * ```

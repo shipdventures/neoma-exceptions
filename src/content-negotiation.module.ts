@@ -53,8 +53,9 @@ class MalformedRedirectException extends Error implements NeomaException {
     }
   }
 
-  public getRedirect(): any {
-    return undefined
+  // Deliberately returns undefined to test malformed getRedirect() handling
+  public getRedirect(): { status: number; url: string } {
+    return undefined as unknown as { status: number; url: string }
   }
 }
 

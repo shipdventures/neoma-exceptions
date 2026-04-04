@@ -275,6 +275,7 @@ The template receives `res.locals` spread into the render context, plus an `exce
 Exceptions can carry their own redirect instruction via the `getRedirect()` method. When the request accepts `text/html` and the exception implements `getRedirect()` returning `{ status, url }`, the filter redirects instead of rendering a template or returning JSON. This takes priority over `@ErrorTemplate`.
 
 ```typescript
+import { HttpStatus } from '@nestjs/common'
 import { NeomaException } from '@neoma/exception-handling'
 
 export class UnauthenticatedException extends Error implements NeomaException {
@@ -284,11 +285,19 @@ export class UnauthenticatedException extends Error implements NeomaException {
   }
 
   public getStatus(): number {
-    return 401
+    return HttpStatus.UNAUTHORIZED
+  }
+
+  public getResponse(): object {
+    return {
+      statusCode: HttpStatus.UNAUTHORIZED,
+      message: this.message,
+      error: 'Unauthorized',
+    }
   }
 
   public getRedirect(): { status: number; url: string } {
-    return { status: 303, url: '/login' }
+    return { status: HttpStatus.SEE_OTHER, url: '/login' }
   }
 }
 ```
