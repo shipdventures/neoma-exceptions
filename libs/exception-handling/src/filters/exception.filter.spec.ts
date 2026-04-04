@@ -969,4 +969,220 @@ describe("new NeomaExceptionFilter()", () => {
       )
     })
   })
+
+  describe("Content negotiation with getRedirect", () => {
+    it("should redirect when the exception has getRedirect() and the request accepts HTML", () => {
+      const err = {
+        ...new Error("Unauthenticated"),
+        name: "UnauthenticatedException",
+        getStatus: (): number => HttpStatus.UNAUTHORIZED,
+        getResponse: (): object => ({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          message: "Unauthenticated",
+          error: "Unauthorized",
+        }),
+        getRedirect: (): { status: number; url: string } => ({
+          status: HttpStatus.SEE_OTHER,
+          url: "/login",
+        }),
+      }
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response()
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(err, host)
+
+      const response = host.switchToHttp().getResponse()
+      expect(response.redirect).toHaveBeenCalledWith(
+        HttpStatus.SEE_OTHER,
+        "/login",
+      )
+      expect(response.json).not.toHaveBeenCalled()
+      expect(response.render).not.toHaveBeenCalled()
+    })
+
+    it("should use the status code from getRedirect()", () => {
+      const err = {
+        ...new Error("Moved"),
+        name: "MovedException",
+        getStatus: (): number => HttpStatus.MOVED_PERMANENTLY,
+        getResponse: (): object => ({
+          statusCode: HttpStatus.MOVED_PERMANENTLY,
+          message: "Moved",
+          error: "Moved Permanently",
+        }),
+        getRedirect: (): { status: number; url: string } => ({
+          status: HttpStatus.MOVED_PERMANENTLY,
+          url: "/new-path",
+        }),
+      }
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response()
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(err, host)
+
+      const response = host.switchToHttp().getResponse()
+      expect(response.redirect).toHaveBeenCalledWith(
+        HttpStatus.MOVED_PERMANENTLY,
+        "/new-path",
+      )
+    })
+
+    it("should take priority over @ErrorTemplate", () => {
+      const err = {
+        ...new Error("Unauthenticated"),
+        name: "UnauthenticatedException",
+        getStatus: (): number => HttpStatus.UNAUTHORIZED,
+        getResponse: (): object => ({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          message: "Unauthenticated",
+          error: "Unauthorized",
+        }),
+        getRedirect: (): { status: number; url: string } => ({
+          status: HttpStatus.SEE_OTHER,
+          url: "/login",
+        }),
+      }
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response({
+        locals: { errorTemplate: { default: "error" } },
+      })
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(err, host)
+
+      const response = host.switchToHttp().getResponse()
+      expect(response.redirect).toHaveBeenCalledWith(
+        HttpStatus.SEE_OTHER,
+        "/login",
+      )
+      expect(response.render).not.toHaveBeenCalled()
+      expect(response.json).not.toHaveBeenCalled()
+    })
+
+    it("should log a warning and fall through when getRedirect() returns undefined", () => {
+      const err = {
+        ...new Error("Bad redirect"),
+        name: "BadRedirectException",
+        getStatus: (): number => HttpStatus.UNAUTHORIZED,
+        getResponse: (): object => ({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          message: "Unauthorized",
+          error: "Unauthorized",
+        }),
+        getRedirect: (): undefined => undefined,
+      }
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response()
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(err, host)
+
+      const response = host.switchToHttp().getResponse()
+      expect(loggerSpy.warn).toHaveBeenCalledWith(
+        err,
+        `getRedirect() returned an invalid value — falling through to default handling`,
+        "NeomaExceptionFilter",
+      )
+      expect(response.redirect).not.toHaveBeenCalled()
+      expect(response.json).toHaveBeenCalled()
+    })
+
+    it("should log a warning and fall through when getRedirect() returns an object missing url", () => {
+      const err = {
+        ...new Error("Missing url"),
+        name: "MissingUrlException",
+        getStatus: (): number => HttpStatus.UNAUTHORIZED,
+        getResponse: (): object => ({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          message: "Unauthorized",
+          error: "Unauthorized",
+        }),
+        getRedirect: (): any => ({ status: 302 }),
+      }
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response()
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(err, host)
+
+      const response = host.switchToHttp().getResponse()
+      expect(loggerSpy.warn).toHaveBeenCalledWith(
+        err,
+        `getRedirect() returned an invalid value — falling through to default handling`,
+        "NeomaExceptionFilter",
+      )
+      expect(response.redirect).not.toHaveBeenCalled()
+      expect(response.json).toHaveBeenCalled()
+    })
+
+    it("should fall through to JSON when the request does not accept HTML even if getRedirect() is present", () => {
+      const err = {
+        ...new Error("Unauthenticated"),
+        name: "UnauthenticatedException",
+        getStatus: (): number => HttpStatus.UNAUTHORIZED,
+        getResponse: (): object => ({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          message: "Unauthenticated",
+          error: "Unauthorized",
+        }),
+        getRedirect: (): { status: number; url: string } => ({
+          status: HttpStatus.SEE_OTHER,
+          url: "/login",
+        }),
+      }
+      const req = express.request({
+        headers: { accept: "application/json" },
+      })
+      const res = express.response()
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(err, host)
+
+      const response = host.switchToHttp().getResponse()
+      expect(response.json).toHaveBeenCalledWith(err.getResponse())
+      expect(response.redirect).not.toHaveBeenCalled()
+    })
+
+    it("should log a debug message when redirecting via getRedirect()", () => {
+      const err = {
+        ...new Error("Unauthenticated"),
+        name: "UnauthenticatedException",
+        getStatus: (): number => HttpStatus.UNAUTHORIZED,
+        getResponse: (): object => ({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          message: "Unauthenticated",
+          error: "Unauthorized",
+        }),
+        getRedirect: (): { status: number; url: string } => ({
+          status: HttpStatus.SEE_OTHER,
+          url: "/login",
+        }),
+      }
+      const req = express.request({
+        headers: { accept: "text/html" },
+      })
+      const res = express.response()
+      const host = executionContext(req, res) as ArgumentsHost
+
+      filter.catch(err, host)
+
+      expect(loggerSpy.debug).toHaveBeenCalledWith(
+        err,
+        `Redirecting to "/login" for [${HttpStatus.UNAUTHORIZED}]`,
+        "NeomaExceptionFilter",
+      )
+    })
+  })
 })

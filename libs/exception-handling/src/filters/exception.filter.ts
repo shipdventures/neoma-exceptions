@@ -149,6 +149,27 @@ class LoggerWrapper {
  * }
  * ```
  *
+ * ## Exception-Level Redirects
+ *
+ * When both conditions are met:
+ * 1. The request `Accept` header includes `text/html`
+ * 2. The exception implements `getRedirect()` returning `{ status, url }`
+ *
+ * The filter redirects the client using the provided status code and URL.
+ * This takes priority over `@ErrorTemplate` — the exception knows where
+ * the user should go.
+ *
+ * If `getRedirect()` returns an invalid value (missing `url` or `status`),
+ * the filter logs a warning and falls through to default handling.
+ *
+ * ```typescript
+ * export class UnauthenticatedException extends Error implements NeomaException {
+ *   public getRedirect(): { status: number; url: string } {
+ *     return { status: 303, url: '/login' }
+ *   }
+ * }
+ * ```
+ *
  * ## Content Negotiation
  *
  * When both conditions are met:
@@ -197,6 +218,7 @@ export class NeomaExceptionFilter implements ExceptionFilter {
     err: Error & {
       getStatus?: () => HttpStatus
       getResponse?: () => any
+      getRedirect?: () => { status: number; url: string } | undefined
     },
     host: ArgumentsHost,
   ): void {
@@ -233,6 +255,22 @@ export class NeomaExceptionFilter implements ExceptionFilter {
 
     const acceptsHtml = request.headers?.accept?.includes("text/html")
     const errorTemplate = response.locals?.errorTemplate
+
+    if (acceptsHtml && typeof err.getRedirect === "function") {
+      const redirect = err.getRedirect()
+      if (redirect?.url && redirect?.status) {
+        logger.debug(
+          err,
+          `Redirecting to "${redirect.url}" for [${err.getStatus!()}]`,
+        )
+        response.redirect(redirect.status, redirect.url)
+        return
+      }
+      logger.warn(
+        err,
+        `getRedirect() returned an invalid value — falling through to default handling`,
+      )
+    }
 
     if (acceptsHtml && errorTemplate) {
       const templateName = errorTemplate[err.name] || errorTemplate.default

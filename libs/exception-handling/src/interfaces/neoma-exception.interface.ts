@@ -12,6 +12,7 @@ import { LoggerService } from "@nestjs/common"
  * | `getStatus()` | 500 Internal Server Error |
  * | `getResponse()` | Generic 500 JSON response |
  * | `log()` | Status-code-based logging (DEBUG/WARN/ERROR) |
+ * | `getRedirect()` | No redirect (template or JSON response) |
  *
  * @example
  * ```typescript
@@ -110,4 +111,32 @@ export interface NeomaException {
    * @param logger - The LoggerService to use for logging
    */
   log?(logger: LoggerService): void
+
+  /**
+   * Returns a redirect instruction for the exception filter.
+   *
+   * When implemented and the request accepts `text/html`, the filter will
+   * redirect the client instead of rendering a template or returning JSON.
+   * This takes priority over `@ErrorTemplate`.
+   *
+   * If the return value is missing `url` or `status`, the filter logs a
+   * warning and falls through to default handling.
+   *
+   * @returns An object with `status` (HTTP redirect status code, e.g. 302, 303)
+   *          and `url` (the redirect target)
+   *
+   * @example
+   * ```typescript
+   * export class UnauthenticatedException extends Error implements NeomaException {
+   *   public getStatus(): number {
+   *     return 401
+   *   }
+   *
+   *   public getRedirect(): { status: number; url: string } {
+   *     return { status: 303, url: '/login' }
+   *   }
+   * }
+   * ```
+   */
+  getRedirect?(): { status: number; url: string }
 }

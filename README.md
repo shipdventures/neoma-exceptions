@@ -270,6 +270,33 @@ API clients (`Accept: application/json`) always receive JSON as usual.
 
 The template receives `res.locals` spread into the render context, plus an `exception` property containing the error response object.
 
+### Exception-Level Redirects
+
+Exceptions can carry their own redirect instruction via the `getRedirect()` method. When the request accepts `text/html` and the exception implements `getRedirect()` returning `{ status, url }`, the filter redirects instead of rendering a template or returning JSON. This takes priority over `@ErrorTemplate`.
+
+```typescript
+import { NeomaException } from '@neoma/exception-handling'
+
+export class UnauthenticatedException extends Error implements NeomaException {
+  public constructor() {
+    super('Authentication required')
+    this.name = 'UnauthenticatedException'
+  }
+
+  public getStatus(): number {
+    return 401
+  }
+
+  public getRedirect(): { status: number; url: string } {
+    return { status: 303, url: '/login' }
+  }
+}
+```
+
+This is useful when the exception itself knows where the user should go — for example, an auth guard that redirects to a login page. The redirect status code is controlled by the exception, so you can use `303 See Other`, `302 Found`, or `301 Moved Permanently` as appropriate.
+
+If `getRedirect()` returns an invalid value (missing `url` or `status`), the filter logs a warning and falls through to default handling. API clients always receive JSON regardless of `getRedirect()`.
+
 ### Static Template Locals
 
 Pass an optional second argument to `@ErrorTemplate` to provide static, per-route variables to the template. These are available under `errorTemplateLocals`:
@@ -464,6 +491,9 @@ export class MyException extends Error implements NeomaException {
 
   // Optional: Custom logging (default: status-code-based logging)
   log?(logger: LoggerService): void
+
+  // Optional: Redirect instruction for browser requests (default: no redirect)
+  getRedirect?(): { status: number; url: string }
 }
 ```
 
@@ -540,6 +570,7 @@ Implement the `NeomaException` interface for full control over status, response,
 | `getStatus()` | 500 Internal Server Error |
 | `getResponse()` | Generic 500 JSON response |
 | `log()` | Status-code-based logging |
+| `getRedirect()` | No redirect (template or JSON response) |
 
 ```typescript
 import { LoggerService } from '@nestjs/common'

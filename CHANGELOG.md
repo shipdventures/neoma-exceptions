@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Exception-level redirect support via `getRedirect()` on `NeomaException` — when an exception returns `{ status, url }` and the request accepts HTML, the filter redirects instead of rendering or returning JSON
+
 ## [0.6.0] - 2026-04-02
 
 ### Added
