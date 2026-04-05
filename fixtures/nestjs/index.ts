@@ -1,6 +1,5 @@
 import { ExecutionContext } from "@nestjs/common"
-import { Request, Response } from "express"
-import { express } from "../express"
+import { express, MockRequest, MockResponse } from "../express"
 
 /**
  * Creates a partial ExecutionContext with a switchToHttp method that then allows
@@ -9,18 +8,18 @@ import { express } from "../express"
  * ExecutionContext extends ArgumentsHost so use this function to create
  * ArgumentsHosts too.
  *
- * @param  req An express Request object that is returned when
+ * @param  req A MockRequest that is returned when
  * switchToHttp().getRequest is called.
- * @param  res An express Response object that is returned when
+ * @param  res A MockResponse that is returned when
  * switchToHttp().getResponse is called.
  * @returns A partial ExecutionContext that supports
  * switchToHttp.
  */
 export const executionContext = (
-  req: Partial<Request> = express.request(),
-  res: Partial<Response> = req.res!,
+  req: MockRequest = express.request(),
+  res: MockResponse = req.res,
 ): Partial<ExecutionContext> => {
-  req.res = <Response>res
+  req.res = res
   return {
     switchToHttp: jest.fn().mockReturnValue({
       getResponse: jest.fn().mockReturnValue(res),
