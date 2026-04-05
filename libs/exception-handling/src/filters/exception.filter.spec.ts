@@ -1180,7 +1180,7 @@ describe("new NeomaExceptionFilter()", () => {
 
       expect(loggerSpy.debug).toHaveBeenCalledWith(
         err,
-        `Redirecting to "/login" for [${HttpStatus.UNAUTHORIZED}]`,
+        `Redirecting [${HttpStatus.UNAUTHORIZED}] to "/login" with ${HttpStatus.SEE_OTHER}`,
         "NeomaExceptionFilter",
       )
     })

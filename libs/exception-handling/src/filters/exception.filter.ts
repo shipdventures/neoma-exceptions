@@ -264,7 +264,7 @@ export class NeomaExceptionFilter implements ExceptionFilter {
       if (redirect?.url && redirect?.status) {
         logger.debug(
           err,
-          `Redirecting to "${redirect.url}" for [${err.getStatus!()}]`,
+          `Redirecting [${err.getStatus!()}] to "${redirect.url}" with ${redirect.status}`,
         )
         response.redirect(redirect.status, redirect.url)
         return
