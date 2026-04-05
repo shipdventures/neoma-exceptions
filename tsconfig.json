@@ -9,18 +9,18 @@
     "target": "ES2022",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
+    "types": ["jest", "node"],
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "fixtures/*": ["fixtures/*"],
-      "@lib": ["libs/exception-handling/src"],
-      "@lib/*": ["libs/exception-handling/src/*"]
+      "fixtures/*": ["${configDir}/fixtures/*"],
+      "@lib": ["${configDir}/libs/exception-handling/src"],
+      "@lib/*": ["${configDir}/libs/exception-handling/src/*"]
     }
   }
 }

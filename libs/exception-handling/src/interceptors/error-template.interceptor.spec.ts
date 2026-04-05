@@ -10,7 +10,7 @@ import {
 import { NestExpressApplication } from "@nestjs/platform-express"
 import { Test, TestingModule } from "@nestjs/testing"
 import { Response } from "express"
-import * as supertest from "supertest"
+import supertest from "supertest"
 import { ErrorTemplate } from "../decorators/error-template.decorator"
 import { ErrorTemplateInterceptor } from "./error-template.interceptor"
 

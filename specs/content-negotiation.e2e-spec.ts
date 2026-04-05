@@ -5,7 +5,7 @@ import { HttpStatus } from "@nestjs/common"
 import { NestExpressApplication } from "@nestjs/platform-express"
 import { managedAppInstance } from "@neoma/managed-app"
 import * as ejs from "ejs"
-import * as request from "supertest"
+import request from "supertest"
 
 const errorTemplate = readFileSync(
   join(process.cwd(), "specs", "views", "error.ejs"),

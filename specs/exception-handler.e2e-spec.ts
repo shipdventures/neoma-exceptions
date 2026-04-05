@@ -1,7 +1,7 @@
 import { HttpStatus } from "@nestjs/common"
 import { managedAppInstance } from "@neoma/managed-app"
 import { faker } from "@faker-js/faker"
-import * as request from "supertest"
+import request from "supertest"
 
 const httpErrorStatuses = [
   HttpStatus.BAD_REQUEST,

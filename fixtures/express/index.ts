@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker"
 import crypto from "crypto"
-import { Request, Response } from "express"
+
 import { Socket } from "net"
 
 const { helpers, internet, system } = faker
@@ -21,6 +21,38 @@ const convertHeadersToLowerCase = (
     delete clonedHeaders[key]
   })
   return clonedHeaders
+}
+
+export interface MockRequest {
+  get(name: string): any
+  header(name: string): any
+  body: any
+  headers: Record<string, string | string[] | undefined>
+  method: string
+  url: string
+  res: MockResponse
+  path: string
+  params: Record<string, string>
+  signedCookies: Record<string, string>
+  connection: Socket
+  [key: string]: any
+}
+
+export interface MockResponse {
+  statusCode?: number
+  getHeaders(): Record<string, any>
+  get(name: string): any
+  header(field: string, value?: string | Array<string>): MockResponse
+  removeHeader(name: string): void
+  cookie: jest.Mock
+  clearCookie: jest.Mock
+  end: jest.Mock
+  status(code: number): MockResponse
+  json: jest.Mock
+  render: jest.Mock
+  redirect: jest.Mock
+  send: jest.Mock
+  locals: Record<string, any>
 }
 
 type ExpressFixtures = {
@@ -44,46 +76,32 @@ type ExpressFixtures = {
   cookie(val: string | object, secret?: string): string
 
   /**
-   * Creates a Partial Response object with status, json, and header functions that
+   * Creates a MockResponse with status, json, and header functions that
    * are instances of a jest.Mock and with a locals property.
    *
-   * @param locals Any locals to populate the response's locals property.
-   * @param headers Any headers to set on the response. They will be accessible through
+   * @param options.locals Any locals to populate the response's locals property.
+   * @param options.headers Any headers to set on the response. They will be accessible through
    * both the getHeaders and get functions.
    *
-   * @returns A Partial Response object with status, get, getHeaders, removeHeader, json,
-   * header, render and send functions, and a locals property.
+   * @returns A MockResponse with status, get, getHeaders, removeHeader, json,
+   * header, render, redirect and send functions, and a locals property.
    */
-  response: (
-    options?: Partial<Response & { headers?: Record<string, any> }>,
-  ) => Partial<Response>
+  response: (options?: {
+    locals?: Record<string, any>
+    headers?: Record<string, any>
+  }) => MockResponse
 
   /**
-   * Creates a Partial Request object with body, and headers properties, and a partial response
-   * object. Also adds convenice methods get and header to provide case insensitive access to
-   * the request headers.
+   * Creates a MockRequest with body, headers, method, url, path, params,
+   * signedCookies, and a MockResponse. Also adds convenience methods get
+   * and header to provide case insensitive access to the request headers.
    *
-   * @param req A Partial Request to provide values for body, headers, and res objects,
-   * and get, and headers functions. Any properties not provided will use sensible defaults.
-   * In addition other properties can be provided to be attached directly to the request e.g.
-   * logger.
+   * @param options Partial MockRequest to override defaults. Any additional
+   * properties are attached directly to the request (e.g. logger).
    *
-   * @returns A Partial Request object and  any other properties provided in the req parameter.
+   * @returns A MockRequest with sensible defaults for any properties not provided.
    */
-  request: (
-    options?: Partial<Request> & Record<string, any>,
-  ) => Pick<
-    Request,
-    | "body"
-    | "headers"
-    | "method"
-    | "url"
-    | "res"
-    | "path"
-    | "params"
-    | "signedCookies"
-  > &
-    Record<string, any>
+  request: (options?: Partial<MockRequest> & Record<string, any>) => MockRequest
 }
 
 export const express: ExpressFixtures = {
@@ -124,10 +142,10 @@ export const express: ExpressFixtures = {
     {
       locals: customLocals,
       headers = {},
-    }: Partial<Response & { headers?: Record<string, any> }> = {
+    }: { locals?: Record<string, any>; headers?: Record<string, any> } = {
       headers: {},
     },
-  ): Partial<Response> {
+  ): MockResponse {
     const clonedHeaders = convertHeadersToLowerCase(headers)
     const locals = { layout: system.fileName(), ...customLocals }
     return {
@@ -137,7 +155,7 @@ export const express: ExpressFixtures = {
       get(name: string): any {
         return caseInsensitiveSearch(clonedHeaders, name)
       },
-      header(field: string, value?: string | Array<string>): Response {
+      header(field: string, value?: string | Array<string>): MockResponse {
         clonedHeaders[field] = value
         return this
       },
@@ -148,7 +166,7 @@ export const express: ExpressFixtures = {
       cookie: jest.fn().mockReturnThis(),
       clearCookie: jest.fn().mockReturnThis(),
       end: jest.fn().mockReturnThis(),
-      status(code: number): Response {
+      status(code: number): MockResponse {
         this.statusCode = code
         return this
       },
@@ -166,32 +184,21 @@ export const express: ExpressFixtures = {
       headers = {},
       method = helpers.arrayElement(["GET", "POST", "PUT", "DELETE", "PATCH"]),
       url = internet.url(),
-      res = express.response() as Response,
+      res = express.response(),
       path = system.filePath(),
       params = {},
       signedCookies = {},
-    }: Partial<Request> & Record<string, any> = {
+    }: Partial<MockRequest> & Record<string, any> = {
       body: {},
       headers: {},
       method: helpers.arrayElement(["GET", "POST", "PUT", "DELETE", "PATCH"]),
       url: internet.url(),
-      res: express.response() as Response,
+      res: express.response(),
       path: system.filePath(),
       params: {},
       signedCookies: {},
     },
-  ): Pick<
-    Request,
-    | "body"
-    | "headers"
-    | "method"
-    | "url"
-    | "res"
-    | "path"
-    | "params"
-    | "signedCookies"
-  > &
-    Record<string, any> {
+  ): MockRequest {
     return {
       get(name: string): any {
         return caseInsensitiveSearch(headers, name)
@@ -200,12 +207,12 @@ export const express: ExpressFixtures = {
         return caseInsensitiveSearch(headers, name)
       },
       // eslint-disable-next-line prefer-rest-params
-      ...(arguments[0] as Partial<Request>),
+      ...(arguments[0] as Partial<MockRequest>),
       body,
       headers,
       method,
       url,
-      res: <Response>res,
+      res,
       path,
       params,
       signedCookies,

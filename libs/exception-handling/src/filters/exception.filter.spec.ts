@@ -11,7 +11,7 @@ import {
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from "@nestjs/common"
-import { faker } from "@faker-js/faker/."
+import { faker } from "@faker-js/faker"
 import { executionContext } from "fixtures/nestjs"
 import { MockLoggerService } from "fixtures/loggers"
 import { express } from "fixtures/express"
