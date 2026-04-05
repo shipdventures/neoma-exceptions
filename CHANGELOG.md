@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-04-05
+
 ### Added
 - Exception-level redirect support via `getRedirect()` on `NeomaException` — when an exception returns `{ status, url }` and the request accepts HTML, the filter redirects instead of rendering or returning JSON
+- "Dynamic over static over defaults" design principle documented in README and JSDoc
+- Response priority table in README and filter JSDoc
+
+### Changed
+- Test fixtures now use standalone `MockRequest`/`MockResponse` interfaces instead of `Partial<Request>`/`Partial<Response>`
+- Node engine requirement bumped to `>=22.13.0`
+- Updated major dependencies: TypeScript 5→6, ESLint 9→10, Jest 29→30
 
 ## [0.6.0] - 2026-04-02
 
@@ -65,7 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Consistent JSON error responses for all exceptions
 - Duck-typed exception support - any object implementing `getStatus()` and `getResponse()` methods is handled automatically
 
-[Unreleased]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.3.0...v0.4.0
