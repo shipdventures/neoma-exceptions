@@ -4,6 +4,16 @@
 
 Laravel-inspired global exception handling that provides consistent error responses and smart logging based on error severity.
 
+## Design Principle
+
+The filter follows a **dynamic over static over defaults** priority:
+
+1. **Dynamic** — the exception itself declares behaviour at runtime via `NeomaException` methods (`getStatus()`, `getResponse()`, `getRedirect()`, `log()`)
+2. **Static** — route-level configuration set at definition time via decorators like `@ErrorTemplate`
+3. **Defaults** — framework defaults (500 status, generic JSON body, status-based logging)
+
+The exception always has more context than the route decorator, so it gets first say. The decorator provides sensible defaults for when the exception doesn't have an opinion.
+
 ## Motivation
 
 NestJS's default exception handling works, but lacks sophisticated logging patterns that differentiate between client errors (404s, validation errors) and server errors (500s, unhandled exceptions). Every production application needs:
@@ -306,6 +316,19 @@ This is useful when the exception itself knows where the user should go — for 
 
 If `getRedirect()` returns an invalid value (missing `url` or `status`), the filter logs a warning and falls through to default handling. API clients always receive JSON regardless of `getRedirect()`.
 
+### Response Priority
+
+When the request accepts `text/html`, the filter resolves the response using the following priority order. Exception-declared behaviour always takes priority over decorator-declared behaviour:
+
+| Priority | Source | Mechanism |
+|----------|--------|-----------|
+| 1 | Exception | `getRedirect()` — redirect with `{ status, url }` |
+| 2 | Decorator | `@ErrorTemplate` with `/` prefix — redirect to route |
+| 3 | Decorator | `@ErrorTemplate` — render a template |
+| 4 | Default | JSON response via `getResponse()` |
+
+For non-HTML requests (API clients), the filter always returns JSON.
+
 ### Static Template Locals
 
 Pass an optional second argument to `@ErrorTemplate` to provide static, per-route variables to the template. These are available under `errorTemplateLocals`:
@@ -574,12 +597,12 @@ async login(@Body() credentials: LoginDto) {
 
 Implement the `NeomaException` interface for full control over status, response, and logging. All methods are optional - unimplemented methods use Neoma defaults:
 
-| Method | Default when not implemented |
-|--------|------------------------------|
-| `getStatus()` | 500 Internal Server Error |
-| `getResponse()` | Generic 500 JSON response |
-| `log()` | Status-code-based logging |
-| `getRedirect()` | No redirect (template or JSON response) |
+| Method | Static fallback | Default |
+|--------|----------------|---------|
+| `getStatus()` | — | 500 Internal Server Error |
+| `getResponse()` | — | Generic 500 JSON response |
+| `log()` | — | Status-based logging (DEBUG/WARN/ERROR) |
+| `getRedirect()` | `@ErrorTemplate` `/` prefix | No redirect |
 
 ```typescript
 import { LoggerService } from '@nestjs/common'

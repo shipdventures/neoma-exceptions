@@ -7,12 +7,12 @@ import { LoggerService } from "@nestjs/common"
  * default behavior for that aspect. Not implementing a method uses the
  * Neoma default:
  *
- * | Method | Default when not implemented |
- * |--------|------------------------------|
- * | `getStatus()` | 500 Internal Server Error |
- * | `getResponse()` | Generic 500 JSON response |
- * | `log()` | Status-code-based logging (DEBUG/WARN/ERROR) |
- * | `getRedirect()` | No redirect (template or JSON response) |
+ * | Method | Static fallback | Default |
+ * |--------|----------------|---------|
+ * | `getStatus()` | — | 500 Internal Server Error |
+ * | `getResponse()` | — | Generic 500 JSON response |
+ * | `log()` | — | Status-based logging (DEBUG/WARN/ERROR) |
+ * | `getRedirect()` | `@ErrorTemplate` `/` prefix | No redirect |
  *
  * @example
  * ```typescript

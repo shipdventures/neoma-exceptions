@@ -59,18 +59,28 @@ class LoggerWrapper {
  * with zero configuration required. Simply import `ExceptionHandlerModule`
  * and all exceptions are handled automatically.
  *
+ * ## Design Principle
+ *
+ * The filter follows a **dynamic over static over defaults** priority:
+ *
+ * 1. **Dynamic** — the exception declares behaviour at runtime via
+ *    {@link NeomaException} methods (`getStatus`, `getResponse`, `getRedirect`, `log`)
+ * 2. **Static** — route-level configuration set at definition time via
+ *    decorators like `@ErrorTemplate`
+ * 3. **Defaults** — framework defaults (500 status, generic JSON, status-based logging)
+ *
  * ## Custom Exceptions
  *
  * Implement the {@link NeomaException} interface to create custom exceptions
  * with full control over status, response, and logging. All methods are
  * optional - unimplemented methods use Neoma defaults:
  *
- * | Method | Default when not implemented |
- * |--------|------------------------------|
- * | `getStatus()` | 500 Internal Server Error |
- * | `getResponse()` | Generic 500 JSON response |
- * | `log()` | Status-code-based logging |
- * | `getRedirect()` | No redirect (template or JSON response) |
+ * | Method | Static fallback | Default |
+ * |--------|----------------|---------|
+ * | `getStatus()` | — | 500 Internal Server Error |
+ * | `getResponse()` | — | Generic 500 JSON response |
+ * | `log()` | — | Status-based logging (DEBUG/WARN/ERROR) |
+ * | `getRedirect()` | `@ErrorTemplate` `/` prefix | No redirect |
  *
  * @example
  * ```typescript
@@ -172,6 +182,21 @@ class LoggerWrapper {
  *   }
  * }
  * ```
+ *
+ * ## Response Priority
+ *
+ * When the request accepts `text/html`, the filter resolves the response
+ * using the following priority order. Exception-declared behaviour always
+ * takes priority over decorator-declared behaviour:
+ *
+ * | Priority | Source | Mechanism |
+ * |----------|--------|-----------|
+ * | 1 | Exception | `getRedirect()` — redirect with `{ status, url }` |
+ * | 2 | Decorator | `@ErrorTemplate` with `/` prefix — redirect to route |
+ * | 3 | Decorator | `@ErrorTemplate` — render a template |
+ * | 4 | Default | JSON response via `getResponse()` |
+ *
+ * For non-HTML requests (API clients), the filter always returns JSON.
  *
  * ## Content Negotiation
  *
