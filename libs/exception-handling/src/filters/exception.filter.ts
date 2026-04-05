@@ -59,17 +59,28 @@ class LoggerWrapper {
  * with zero configuration required. Simply import `ExceptionHandlerModule`
  * and all exceptions are handled automatically.
  *
+ * ## Design Principle
+ *
+ * The filter follows a **dynamic over static over defaults** priority:
+ *
+ * 1. **Dynamic** — the exception declares behaviour at runtime via
+ *    {@link NeomaException} methods (`getStatus`, `getResponse`, `getRedirect`, `log`)
+ * 2. **Static** — route-level configuration set at definition time via
+ *    decorators like `@ErrorTemplate`
+ * 3. **Defaults** — framework defaults (500 status, generic JSON, status-based logging)
+ *
  * ## Custom Exceptions
  *
  * Implement the {@link NeomaException} interface to create custom exceptions
  * with full control over status, response, and logging. All methods are
  * optional - unimplemented methods use Neoma defaults:
  *
- * | Method | Default when not implemented |
- * |--------|------------------------------|
- * | `getStatus()` | 500 Internal Server Error |
- * | `getResponse()` | Generic 500 JSON response |
- * | `log()` | Status-code-based logging |
+ * | Method | Static fallback | Default |
+ * |--------|----------------|---------|
+ * | `getStatus()` | — | 500 Internal Server Error |
+ * | `getResponse()` | — | Generic 500 JSON response |
+ * | `log()` | — | Status-based logging (DEBUG/WARN/ERROR) |
+ * | `getRedirect()` | `@ErrorTemplate` `/` prefix | No redirect |
  *
  * @example
  * ```typescript
@@ -82,12 +93,12 @@ class LoggerWrapper {
  *   }
  *
  *   public getStatus(): number {
- *     return 402
+ *     return HttpStatus.PAYMENT_REQUIRED
  *   }
  *
  *   public getResponse(): object {
  *     return {
- *       statusCode: 402,
+ *       statusCode: HttpStatus.PAYMENT_REQUIRED,
  *       message: this.message,
  *       error: 'Payment Required',
  *     }
@@ -149,6 +160,44 @@ class LoggerWrapper {
  * }
  * ```
  *
+ * ## Exception-Level Redirects
+ *
+ * When both conditions are met:
+ * 1. The request `Accept` header includes `text/html`
+ * 2. The exception implements `getRedirect()` returning `{ status, url }`
+ *
+ * The filter redirects the client using the provided status code and URL.
+ * This takes priority over `@ErrorTemplate` — the exception knows where
+ * the user should go.
+ *
+ * If `getRedirect()` returns an invalid value (missing `url` or `status`),
+ * the filter logs a warning and falls through to default handling.
+ *
+ * ```typescript
+ * import { HttpStatus } from '@nestjs/common'
+ *
+ * export class UnauthenticatedException extends Error implements NeomaException {
+ *   public getRedirect(): { status: number; url: string } {
+ *     return { status: HttpStatus.SEE_OTHER, url: '/login' }
+ *   }
+ * }
+ * ```
+ *
+ * ## Response Priority
+ *
+ * When the request accepts `text/html`, the filter resolves the response
+ * using the following priority order. Exception-declared behaviour always
+ * takes priority over decorator-declared behaviour:
+ *
+ * | Priority | Source | Mechanism |
+ * |----------|--------|-----------|
+ * | 1 | Exception | `getRedirect()` — redirect with `{ status, url }` |
+ * | 2 | Decorator | `@ErrorTemplate` with `/` prefix — redirect to route |
+ * | 3 | Decorator | `@ErrorTemplate` — render a template |
+ * | 4 | Default | JSON response via `getResponse()` |
+ *
+ * For non-HTML requests (API clients), the filter always returns JSON.
+ *
  * ## Content Negotiation
  *
  * When both conditions are met:
@@ -197,6 +246,7 @@ export class NeomaExceptionFilter implements ExceptionFilter {
     err: Error & {
       getStatus?: () => HttpStatus
       getResponse?: () => any
+      getRedirect?: () => { status: number; url: string } | undefined
     },
     host: ArgumentsHost,
   ): void {
@@ -233,6 +283,22 @@ export class NeomaExceptionFilter implements ExceptionFilter {
 
     const acceptsHtml = request.headers?.accept?.includes("text/html")
     const errorTemplate = response.locals?.errorTemplate
+
+    if (acceptsHtml && typeof err.getRedirect === "function") {
+      const redirect = err.getRedirect()
+      if (redirect?.url && redirect?.status) {
+        logger.debug(
+          err,
+          `Redirecting [${err.getStatus!()}] to "${redirect.url}" with ${redirect.status}`,
+        )
+        response.redirect(redirect.status, redirect.url)
+        return
+      }
+      logger.warn(
+        err,
+        `getRedirect() returned an invalid value — falling through to default handling`,
+      )
+    }
 
     if (acceptsHtml && errorTemplate) {
       const templateName = errorTemplate[err.name] || errorTemplate.default

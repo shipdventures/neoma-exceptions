@@ -4,6 +4,16 @@
 
 Laravel-inspired global exception handling that provides consistent error responses and smart logging based on error severity.
 
+## Design Principle
+
+The filter follows a **dynamic over static over defaults** priority:
+
+1. **Dynamic** — the exception itself declares behaviour at runtime via `NeomaException` methods (`getStatus()`, `getResponse()`, `getRedirect()`, `log()`)
+2. **Static** — route-level configuration set at definition time via decorators like `@ErrorTemplate`
+3. **Defaults** — framework defaults (500 status, generic JSON body, status-based logging)
+
+The exception always has more context than the route decorator, so it gets first say. The decorator provides sensible defaults for when the exception doesn't have an opinion.
+
 ## Motivation
 
 NestJS's default exception handling works, but lacks sophisticated logging patterns that differentiate between client errors (404s, validation errors) and server errors (500s, unhandled exceptions). Every production application needs:
@@ -270,6 +280,55 @@ API clients (`Accept: application/json`) always receive JSON as usual.
 
 The template receives `res.locals` spread into the render context, plus an `exception` property containing the error response object.
 
+### Exception-Level Redirects
+
+Exceptions can carry their own redirect instruction via the `getRedirect()` method. When the request accepts `text/html` and the exception implements `getRedirect()` returning `{ status, url }`, the filter redirects instead of rendering a template or returning JSON. This takes priority over `@ErrorTemplate`.
+
+```typescript
+import { HttpStatus } from '@nestjs/common'
+import { NeomaException } from '@neoma/exception-handling'
+
+export class UnauthenticatedException extends Error implements NeomaException {
+  public constructor() {
+    super('Authentication required')
+    this.name = 'UnauthenticatedException'
+  }
+
+  public getStatus(): number {
+    return HttpStatus.UNAUTHORIZED
+  }
+
+  public getResponse(): object {
+    return {
+      statusCode: HttpStatus.UNAUTHORIZED,
+      message: this.message,
+      error: 'Unauthorized',
+    }
+  }
+
+  public getRedirect(): { status: number; url: string } {
+    return { status: HttpStatus.SEE_OTHER, url: '/login' }
+  }
+}
+```
+
+This is useful when the exception itself knows where the user should go — for example, an auth guard that redirects to a login page. The redirect status code is controlled by the exception, so you can use `303 See Other`, `302 Found`, or `301 Moved Permanently` as appropriate.
+
+If `getRedirect()` returns an invalid value (missing `url` or `status`), the filter logs a warning and falls through to default handling. API clients always receive JSON regardless of `getRedirect()`.
+
+### Response Priority
+
+When the request accepts `text/html`, the filter resolves the response using the following priority order. Exception-declared behaviour always takes priority over decorator-declared behaviour:
+
+| Priority | Source | Mechanism |
+|----------|--------|-----------|
+| 1 | Exception | `getRedirect()` — redirect with `{ status, url }` |
+| 2 | Decorator | `@ErrorTemplate` with `/` prefix — redirect to route |
+| 3 | Decorator | `@ErrorTemplate` — render a template |
+| 4 | Default | JSON response via `getResponse()` |
+
+For non-HTML requests (API clients), the filter always returns JSON.
+
 ### Static Template Locals
 
 Pass an optional second argument to `@ErrorTemplate` to provide static, per-route variables to the template. These are available under `errorTemplateLocals`:
@@ -464,6 +523,9 @@ export class MyException extends Error implements NeomaException {
 
   // Optional: Custom logging (default: status-code-based logging)
   log?(logger: LoggerService): void
+
+  // Optional: Redirect instruction for browser requests (default: no redirect)
+  getRedirect?(): { status: number; url: string }
 }
 ```
 
@@ -535,11 +597,12 @@ async login(@Body() credentials: LoginDto) {
 
 Implement the `NeomaException` interface for full control over status, response, and logging. All methods are optional - unimplemented methods use Neoma defaults:
 
-| Method | Default when not implemented |
-|--------|------------------------------|
-| `getStatus()` | 500 Internal Server Error |
-| `getResponse()` | Generic 500 JSON response |
-| `log()` | Status-code-based logging |
+| Method | Static fallback | Default |
+|--------|----------------|---------|
+| `getStatus()` | — | 500 Internal Server Error |
+| `getResponse()` | — | Generic 500 JSON response |
+| `log()` | — | Status-based logging (DEBUG/WARN/ERROR) |
+| `getRedirect()` | `@ErrorTemplate` `/` prefix | No redirect |
 
 ```typescript
 import { LoggerService } from '@nestjs/common'

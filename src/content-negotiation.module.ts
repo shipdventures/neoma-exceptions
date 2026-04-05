@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  HttpStatus,
   InternalServerErrorException,
   Module,
   NotFoundException,
@@ -9,7 +10,54 @@ import {
   Query,
 } from "@nestjs/common"
 import { IsEmail, MinLength } from "class-validator"
-import { ExceptionHandlerModule, ErrorTemplate } from "@lib"
+import { ExceptionHandlerModule, ErrorTemplate, NeomaException } from "@lib"
+
+class RedirectableException extends Error implements NeomaException {
+  public constructor() {
+    super("Unauthenticated")
+    this.name = "RedirectableException"
+  }
+
+  public getStatus(): number {
+    return HttpStatus.UNAUTHORIZED
+  }
+
+  public getResponse(): object {
+    return {
+      statusCode: HttpStatus.UNAUTHORIZED,
+      message: "Unauthenticated",
+      error: "Unauthorized",
+    }
+  }
+
+  public getRedirect(): { status: number; url: string } {
+    return { status: HttpStatus.SEE_OTHER, url: "/login" }
+  }
+}
+
+class MalformedRedirectException extends Error implements NeomaException {
+  public constructor() {
+    super("Bad redirect")
+    this.name = "MalformedRedirectException"
+  }
+
+  public getStatus(): number {
+    return HttpStatus.UNAUTHORIZED
+  }
+
+  public getResponse(): object {
+    return {
+      statusCode: HttpStatus.UNAUTHORIZED,
+      message: "Unauthorized",
+      error: "Unauthorized",
+    }
+  }
+
+  // Deliberately returns undefined to test malformed getRedirect() handling
+  public getRedirect(): { status: number; url: string } {
+    return undefined as unknown as { status: number; url: string }
+  }
+}
 
 class TestDto {
   @MinLength(5, { message: "Name must be at least 5 characters" })
@@ -86,6 +134,22 @@ class ContentNegotiationController {
       default:
         throw new Error("Unhandled error")
     }
+  }
+
+  @Post("with-redirect")
+  public withRedirect(): void {
+    throw new RedirectableException()
+  }
+
+  @Post("with-malformed-redirect")
+  public withMalformedRedirect(): void {
+    throw new MalformedRedirectException()
+  }
+
+  @ErrorTemplate("error")
+  @Post("with-redirect-and-template")
+  public withRedirectAndTemplate(): void {
+    throw new RedirectableException()
   }
 }
 

@@ -7,15 +7,16 @@ import { LoggerService } from "@nestjs/common"
  * default behavior for that aspect. Not implementing a method uses the
  * Neoma default:
  *
- * | Method | Default when not implemented |
- * |--------|------------------------------|
- * | `getStatus()` | 500 Internal Server Error |
- * | `getResponse()` | Generic 500 JSON response |
- * | `log()` | Status-code-based logging (DEBUG/WARN/ERROR) |
+ * | Method | Static fallback | Default |
+ * |--------|----------------|---------|
+ * | `getStatus()` | — | 500 Internal Server Error |
+ * | `getResponse()` | — | Generic 500 JSON response |
+ * | `log()` | — | Status-based logging (DEBUG/WARN/ERROR) |
+ * | `getRedirect()` | `@ErrorTemplate` `/` prefix | No redirect |
  *
  * @example
  * ```typescript
- * import { LoggerService } from '@nestjs/common'
+ * import { HttpStatus, LoggerService } from '@nestjs/common'
  * import { NeomaException } from '@neoma/exception-handling'
  *
  * export class PaymentFailedException extends Error implements NeomaException {
@@ -28,12 +29,12 @@ import { LoggerService } from "@nestjs/common"
  *   }
  *
  *   public getStatus(): number {
- *     return 402
+ *     return HttpStatus.PAYMENT_REQUIRED
  *   }
  *
  *   public getResponse(): object {
  *     return {
- *       statusCode: 402,
+ *       statusCode: HttpStatus.PAYMENT_REQUIRED,
  *       message: this.reason,
  *       error: 'Payment Required',
  *     }
@@ -52,11 +53,11 @@ import { LoggerService } from "@nestjs/common"
  * ```typescript
  * export class ExpectedValidationException extends Error implements NeomaException {
  *   public getStatus(): number {
- *     return 422
+ *     return HttpStatus.UNPROCESSABLE_ENTITY
  *   }
  *
  *   public getResponse(): object {
- *     return { statusCode: 422, message: this.message, error: 'Validation Error' }
+ *     return { statusCode: HttpStatus.UNPROCESSABLE_ENTITY, message: this.message, error: 'Validation Error' }
  *   }
  *
  *   // Implementing log() but leaving it empty disables logging entirely
@@ -110,4 +111,34 @@ export interface NeomaException {
    * @param logger - The LoggerService to use for logging
    */
   log?(logger: LoggerService): void
+
+  /**
+   * Returns a redirect instruction for the exception filter.
+   *
+   * When implemented and the request accepts `text/html`, the filter will
+   * redirect the client instead of rendering a template or returning JSON.
+   * This takes priority over `@ErrorTemplate`.
+   *
+   * If the return value is missing `url` or `status`, the filter logs a
+   * warning and falls through to default handling.
+   *
+   * @returns An object with `status` (HTTP redirect status code, e.g. 302, 303)
+   *          and `url` (the redirect target)
+   *
+   * @example
+   * ```typescript
+   * import { HttpStatus } from '@nestjs/common'
+   *
+   * export class UnauthenticatedException extends Error implements NeomaException {
+   *   public getStatus(): number {
+   *     return HttpStatus.UNAUTHORIZED
+   *   }
+   *
+   *   public getRedirect(): { status: number; url: string } {
+   *     return { status: HttpStatus.SEE_OTHER, url: '/login' }
+   *   }
+   * }
+   * ```
+   */
+  getRedirect?(): { status: number; url: string }
 }

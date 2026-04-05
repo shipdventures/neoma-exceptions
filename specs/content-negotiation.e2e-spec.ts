@@ -326,4 +326,38 @@ describe("Content Negotiation", () => {
         .expect("Content-Type", /json/)
     })
   })
+
+  describe("When the exception has getRedirect()", () => {
+    it("should redirect when the request accepts text/html", async () => {
+      await request(app.getHttpServer())
+        .post("/with-redirect")
+        .set("Accept", "text/html")
+        .expect(HttpStatus.SEE_OTHER)
+        .expect("Location", "/login")
+    })
+
+    it("should respond with JSON when the request accepts application/json", async () => {
+      await request(app.getHttpServer())
+        .post("/with-redirect")
+        .set("Accept", "application/json")
+        .expect(HttpStatus.UNAUTHORIZED)
+        .expect("Content-Type", /json/)
+    })
+
+    it("should fall through to JSON when getRedirect() returns an invalid value", async () => {
+      await request(app.getHttpServer())
+        .post("/with-malformed-redirect")
+        .set("Accept", "text/html")
+        .expect(HttpStatus.UNAUTHORIZED)
+        .expect("Content-Type", /json/)
+    })
+
+    it("should take priority over @ErrorTemplate", async () => {
+      await request(app.getHttpServer())
+        .post("/with-redirect-and-template")
+        .set("Accept", "text/html")
+        .expect(HttpStatus.SEE_OTHER)
+        .expect("Location", "/login")
+    })
+  })
 })
