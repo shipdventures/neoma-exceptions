@@ -92,16 +92,14 @@ type ExpressFixtures = {
   }) => MockResponse
 
   /**
-   * Creates a Partial Request object with body, and headers properties, and a partial response
-   * object. Also adds convenice methods get and header to provide case insensitive access to
-   * the request headers.
+   * Creates a MockRequest with body, headers, method, url, path, params,
+   * signedCookies, and a MockResponse. Also adds convenience methods get
+   * and header to provide case insensitive access to the request headers.
    *
-   * @param req A Partial Request to provide values for body, headers, and res objects,
-   * and get, and headers functions. Any properties not provided will use sensible defaults.
-   * In addition other properties can be provided to be attached directly to the request e.g.
-   * logger.
+   * @param options Partial MockRequest to override defaults. Any additional
+   * properties are attached directly to the request (e.g. logger).
    *
-   * @returns A Partial Request object and  any other properties provided in the req parameter.
+   * @returns A MockRequest with sensible defaults for any properties not provided.
    */
   request: (options?: Partial<MockRequest> & Record<string, any>) => MockRequest
 }

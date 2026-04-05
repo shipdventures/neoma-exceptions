@@ -1,7 +1,7 @@
 {
   "name": "neoma-exception-handling",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.13.0"
   },
   "version": "0.6.0",
   "description": "",
