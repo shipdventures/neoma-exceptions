@@ -70,6 +70,7 @@ class LoggerWrapper {
  * | `getStatus()` | 500 Internal Server Error |
  * | `getResponse()` | Generic 500 JSON response |
  * | `log()` | Status-code-based logging |
+ * | `getRedirect()` | No redirect (template or JSON response) |
  *
  * @example
  * ```typescript
@@ -82,12 +83,12 @@ class LoggerWrapper {
  *   }
  *
  *   public getStatus(): number {
- *     return 402
+ *     return HttpStatus.PAYMENT_REQUIRED
  *   }
  *
  *   public getResponse(): object {
  *     return {
- *       statusCode: 402,
+ *       statusCode: HttpStatus.PAYMENT_REQUIRED,
  *       message: this.message,
  *       error: 'Payment Required',
  *     }

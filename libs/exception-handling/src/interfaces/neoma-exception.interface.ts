@@ -16,7 +16,7 @@ import { LoggerService } from "@nestjs/common"
  *
  * @example
  * ```typescript
- * import { LoggerService } from '@nestjs/common'
+ * import { HttpStatus, LoggerService } from '@nestjs/common'
  * import { NeomaException } from '@neoma/exception-handling'
  *
  * export class PaymentFailedException extends Error implements NeomaException {
@@ -29,12 +29,12 @@ import { LoggerService } from "@nestjs/common"
  *   }
  *
  *   public getStatus(): number {
- *     return 402
+ *     return HttpStatus.PAYMENT_REQUIRED
  *   }
  *
  *   public getResponse(): object {
  *     return {
- *       statusCode: 402,
+ *       statusCode: HttpStatus.PAYMENT_REQUIRED,
  *       message: this.reason,
  *       error: 'Payment Required',
  *     }
@@ -53,11 +53,11 @@ import { LoggerService } from "@nestjs/common"
  * ```typescript
  * export class ExpectedValidationException extends Error implements NeomaException {
  *   public getStatus(): number {
- *     return 422
+ *     return HttpStatus.UNPROCESSABLE_ENTITY
  *   }
  *
  *   public getResponse(): object {
- *     return { statusCode: 422, message: this.message, error: 'Validation Error' }
+ *     return { statusCode: HttpStatus.UNPROCESSABLE_ENTITY, message: this.message, error: 'Validation Error' }
  *   }
  *
  *   // Implementing log() but leaving it empty disables logging entirely
