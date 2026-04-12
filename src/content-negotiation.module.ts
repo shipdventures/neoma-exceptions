@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Body,
+  CanActivate,
   Controller,
   HttpStatus,
   InternalServerErrorException,
@@ -8,6 +9,8 @@ import {
   NotFoundException,
   Post,
   Query,
+  UnauthorizedException,
+  UseGuards,
 } from "@nestjs/common"
 import { IsEmail, MinLength } from "class-validator"
 import { ExceptionHandlerModule, ErrorTemplate, NeomaException } from "@lib"
@@ -56,6 +59,12 @@ class MalformedRedirectException extends Error implements NeomaException {
   // Deliberately returns undefined to test malformed getRedirect() handling
   public getRedirect(): { status: number; url: string } {
     return undefined as unknown as { status: number; url: string }
+  }
+}
+
+class ThrowingGuard implements CanActivate {
+  public canActivate(): boolean {
+    throw new UnauthorizedException("Not authenticated")
   }
 }
 
@@ -150,6 +159,29 @@ class ContentNegotiationController {
   @Post("with-redirect-and-template")
   public withRedirectAndTemplate(): void {
     throw new RedirectableException()
+  }
+
+  @ErrorTemplate("error")
+  @UseGuards(ThrowingGuard)
+  @Post("with-template-guard-throws")
+  public withTemplateGuardThrows(): void {
+    return
+  }
+
+  @UseGuards(ThrowingGuard)
+  @Post("without-template-guard-throws")
+  public withoutTemplateGuardThrows(): void {
+    return
+  }
+
+  @ErrorTemplate({
+    UnauthorizedException: "bad-request",
+    default: "error",
+  })
+  @UseGuards(ThrowingGuard)
+  @Post("with-multi-template-guard-throws")
+  public withMultiTemplateGuardThrows(): void {
+    return
   }
 }
 

@@ -5,14 +5,14 @@ import {
   HttpStatus,
   Module,
   Res,
-  UseInterceptors,
+  UseGuards,
 } from "@nestjs/common"
 import { NestExpressApplication } from "@nestjs/platform-express"
 import { Test, TestingModule } from "@nestjs/testing"
 import { Response } from "express"
 import supertest from "supertest"
 import { ErrorTemplate } from "../decorators/error-template.decorator"
-import { ErrorTemplateInterceptor } from "./error-template.interceptor"
+import { ErrorTemplateMetadataBridge } from "./error-template-metadata-bridge.guard"
 
 const { system } = faker
 const controllerPath = system.directoryPath()
@@ -33,21 +33,21 @@ const locals = {
 class ControllerClass {
   @ErrorTemplate(templateName)
   @Get(withStringPath)
-  @UseInterceptors(ErrorTemplateInterceptor)
+  @UseGuards(ErrorTemplateMetadataBridge)
   public withString(@Res({ passthrough: true }) res: Response): object {
     return { errorTemplate: res.locals.errorTemplate }
   }
 
   @ErrorTemplate({ default: templateName })
   @Get(withOptionsPath)
-  @UseInterceptors(ErrorTemplateInterceptor)
+  @UseGuards(ErrorTemplateMetadataBridge)
   public withOptions(@Res({ passthrough: true }) res: Response): object {
     return { errorTemplate: res.locals.errorTemplate }
   }
 
   @ErrorTemplate(templateName, locals)
   @Get(withStringAndLocalsPath)
-  @UseInterceptors(ErrorTemplateInterceptor)
+  @UseGuards(ErrorTemplateMetadataBridge)
   public withStringAndLocals(
     @Res({ passthrough: true }) res: Response,
   ): object {
@@ -59,7 +59,7 @@ class ControllerClass {
 
   @ErrorTemplate({ default: templateName }, locals)
   @Get(withOptionsAndLocalsPath)
-  @UseInterceptors(ErrorTemplateInterceptor)
+  @UseGuards(ErrorTemplateMetadataBridge)
   public withOptionsAndLocals(
     @Res({ passthrough: true }) res: Response,
   ): object {
@@ -70,7 +70,7 @@ class ControllerClass {
   }
 
   @Get(withoutTemplatePath)
-  @UseInterceptors(ErrorTemplateInterceptor)
+  @UseGuards(ErrorTemplateMetadataBridge)
   public withoutTemplate(@Res({ passthrough: true }) res: Response): object {
     return {
       errorTemplate: res.locals.errorTemplate,
@@ -82,14 +82,14 @@ class ControllerClass {
 @Module({
   controllers: [ControllerClass],
 })
-class InterceptorTestModule {}
+class GuardTestModule {}
 
-describe("ErrorTemplateInterceptor", () => {
+describe("ErrorTemplateMetadataBridge", () => {
   let app: NestExpressApplication
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [InterceptorTestModule],
+      imports: [GuardTestModule],
     }).compile()
 
     app = module.createNestApplication()

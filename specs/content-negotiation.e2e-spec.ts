@@ -360,4 +360,61 @@ describe("Content Negotiation", () => {
         .expect("Location", "/login")
     })
   })
+
+  describe("When a guard throws and the route has @ErrorTemplate", () => {
+    it("should render the error template when the request accepts text/html", async () => {
+      const exception = {
+        statusCode: HttpStatus.UNAUTHORIZED,
+        message: "Not authenticated",
+        error: "Unauthorized",
+      }
+      const expectedHtml = ejs.render(errorTemplate, {
+        errorTemplate: { default: "error" },
+        exception,
+      })
+
+      await request(app.getHttpServer())
+        .post("/with-template-guard-throws")
+        .set("Accept", "text/html")
+        .expect(HttpStatus.UNAUTHORIZED)
+        .expect(expectedHtml)
+    })
+
+    it("should respond with JSON when the request accepts application/json", async () => {
+      await request(app.getHttpServer())
+        .post("/with-template-guard-throws")
+        .set("Accept", "application/json")
+        .expect(HttpStatus.UNAUTHORIZED)
+        .expect("Content-Type", /json/)
+    })
+
+    it("should respond with JSON when a guard throws and the route has no @ErrorTemplate", async () => {
+      await request(app.getHttpServer())
+        .post("/without-template-guard-throws")
+        .set("Accept", "text/html")
+        .expect(HttpStatus.UNAUTHORIZED)
+        .expect("Content-Type", /json/)
+    })
+
+    it("should render the exception-specific template when the guard throws a matched exception", async () => {
+      const exception = {
+        statusCode: HttpStatus.UNAUTHORIZED,
+        message: "Not authenticated",
+        error: "Unauthorized",
+      }
+      const expectedHtml = ejs.render(badRequestTemplate, {
+        errorTemplate: {
+          UnauthorizedException: "bad-request",
+          default: "error",
+        },
+        exception,
+      })
+
+      await request(app.getHttpServer())
+        .post("/with-multi-template-guard-throws")
+        .set("Accept", "text/html")
+        .expect(HttpStatus.UNAUTHORIZED)
+        .expect(expectedHtml)
+    })
+  })
 })
