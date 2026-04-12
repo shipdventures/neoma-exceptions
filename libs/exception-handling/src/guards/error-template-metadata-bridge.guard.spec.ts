@@ -1,18 +1,11 @@
 import { faker } from "@faker-js/faker"
-import {
-  Controller,
-  Get,
-  HttpStatus,
-  Module,
-  Res,
-  UseGuards,
-} from "@nestjs/common"
+import { Controller, Get, HttpStatus, Module, Res } from "@nestjs/common"
 import { NestExpressApplication } from "@nestjs/platform-express"
 import { Test, TestingModule } from "@nestjs/testing"
 import { Response } from "express"
 import supertest from "supertest"
 import { ErrorTemplate } from "../decorators/error-template.decorator"
-import { ErrorTemplateMetadataBridge } from "./error-template-metadata-bridge.guard"
+import { ExceptionHandlerModule } from "../exception-handler.module"
 
 const { system } = faker
 const controllerPath = system.directoryPath()
@@ -24,6 +17,8 @@ const withOptionsAndLocalsPath = `/${faker.string.uuid()}`
 const withoutTemplatePath = `/${faker.string.uuid()}`
 
 const templateName = `${system.directoryPath()}/${faker.hacker.noun()}`
+const secondTemplateName = `${system.directoryPath()}/${faker.hacker.noun()}`
+const thirdTemplateName = `${system.directoryPath()}/${faker.hacker.noun()}`
 const locals = {
   formAction: faker.internet.url(),
   pageTitle: faker.lorem.words(),
@@ -33,21 +28,22 @@ const locals = {
 class ControllerClass {
   @ErrorTemplate(templateName)
   @Get(withStringPath)
-  @UseGuards(ErrorTemplateMetadataBridge)
   public withString(@Res({ passthrough: true }) res: Response): object {
     return { errorTemplate: res.locals.errorTemplate }
   }
 
-  @ErrorTemplate({ default: templateName })
+  @ErrorTemplate({
+    BadRequestException: secondTemplateName,
+    InternalServerErrorException: thirdTemplateName,
+    default: templateName,
+  })
   @Get(withOptionsPath)
-  @UseGuards(ErrorTemplateMetadataBridge)
   public withOptions(@Res({ passthrough: true }) res: Response): object {
     return { errorTemplate: res.locals.errorTemplate }
   }
 
   @ErrorTemplate(templateName, locals)
   @Get(withStringAndLocalsPath)
-  @UseGuards(ErrorTemplateMetadataBridge)
   public withStringAndLocals(
     @Res({ passthrough: true }) res: Response,
   ): object {
@@ -59,7 +55,6 @@ class ControllerClass {
 
   @ErrorTemplate({ default: templateName }, locals)
   @Get(withOptionsAndLocalsPath)
-  @UseGuards(ErrorTemplateMetadataBridge)
   public withOptionsAndLocals(
     @Res({ passthrough: true }) res: Response,
   ): object {
@@ -70,7 +65,6 @@ class ControllerClass {
   }
 
   @Get(withoutTemplatePath)
-  @UseGuards(ErrorTemplateMetadataBridge)
   public withoutTemplate(@Res({ passthrough: true }) res: Response): object {
     return {
       errorTemplate: res.locals.errorTemplate,
@@ -80,6 +74,7 @@ class ControllerClass {
 }
 
 @Module({
+  imports: [ExceptionHandlerModule],
   controllers: [ControllerClass],
 })
 class GuardTestModule {}
@@ -108,12 +103,16 @@ describe("ErrorTemplateMetadataBridge", () => {
     expect(response.body.errorTemplate).toEqual({ default: templateName })
   })
 
-  it("should set res.locals.errorTemplate to the options object when @ErrorTemplate is passed an object", async () => {
+  it("should set res.locals.errorTemplate to the full options object when @ErrorTemplate is passed multiple exception-to-template mappings", async () => {
     const response = await supertest(app.getHttpServer())
       .get(`${controllerPath}${withOptionsPath}`)
       .expect(HttpStatus.OK)
 
-    expect(response.body.errorTemplate).toEqual({ default: templateName })
+    expect(response.body.errorTemplate).toEqual({
+      BadRequestException: secondTemplateName,
+      InternalServerErrorException: thirdTemplateName,
+      default: templateName,
+    })
   })
 
   it("should set res.locals.errorTemplateLocals when @ErrorTemplate is passed a string and locals", async () => {
