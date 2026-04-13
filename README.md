@@ -120,6 +120,8 @@ import { ExceptionHandlerModule } from '@neoma/exception-handling'
 export class AppModule {}
 ```
 
+> **⚠️ Import order matters.** `ExceptionHandlerModule` must appear **first** (or very early) in your app module's `imports` array. The module registers a global `APP_GUARD` that bridges `@ErrorTemplate` metadata onto the response before any other guards run. If another guard (e.g. an auth guard) throws before the metadata bridge has executed, the exception filter will not have access to `@ErrorTemplate` configuration and will fall back to a plain JSON response instead of rendering your error template.
+
 That's it. All exceptions are now handled automatically.
 
 ### 2. Throw Exceptions Anywhere
@@ -427,7 +429,7 @@ This provides clean structured output with the full error object for better log 
 
 ### `ExceptionHandlerModule`
 
-A NestJS module that registers a global exception filter, validation pipe, and error template interceptor.
+A NestJS module that registers a global exception filter, validation pipe, and error template metadata bridge guard.
 
 ```typescript
 import { ExceptionHandlerModule } from '@neoma/exception-handling'
@@ -443,7 +445,7 @@ export class AppModule {}
 Registers:
 - `NeomaExceptionFilter` as a global `APP_FILTER`
 - `ValidationPipe` with `validationFactory` as a global `APP_PIPE`
-- `ErrorTemplateInterceptor` as a global `APP_INTERCEPTOR`
+- `ErrorTemplateMetadataBridge` as a global `APP_GUARD`
 
 ### `NeomaExceptionFilter`
 
@@ -492,9 +494,9 @@ When a string is passed, it is normalised to `{ default: template }` internally.
 
 Static locals are available in templates under `errorTemplateLocals` (e.g. `errorTemplateLocals.formAction`).
 
-### `ErrorTemplateInterceptor`
+### `ErrorTemplateMetadataBridge`
 
-Global interceptor that reads `@ErrorTemplate` metadata and stores the template options on `res.locals.errorTemplate` and any static locals on `res.locals.errorTemplateLocals`. Automatically registered by `ExceptionHandlerModule` - you don't need to interact with this directly.
+Global guard (registered via `APP_GUARD`) that reads `@ErrorTemplate` metadata and stores the template options on `res.locals.errorTemplate` and any static locals on `res.locals.errorTemplateLocals`. A guard is used instead of an interceptor because interceptors never run when a guard throws — so an auth guard rejecting a request would prevent `@ErrorTemplate` metadata from reaching the exception filter. As a guard, the metadata bridge runs before other guards in the chain, ensuring the error template configuration is always available. Automatically registered by `ExceptionHandlerModule` - you don't need to interact with this directly.
 
 ### `validationFactory`
 
