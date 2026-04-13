@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [0.8.0] - 2026-04-13
+
+### Added
 - `ErrorTemplateMetadataBridge` guard — ensures `@ErrorTemplate` metadata reaches the exception filter when a guard throws, fixing a gap where guard-thrown exceptions bypassed declared templates
 
 ### Removed
@@ -80,7 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Consistent JSON error responses for all exceptions
 - Duck-typed exception support - any object implementing `getStatus()` and `getResponse()` methods is handled automatically
 
-[Unreleased]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/shipdventures/neoma-exception-handling/compare/v0.4.0...v0.5.0
