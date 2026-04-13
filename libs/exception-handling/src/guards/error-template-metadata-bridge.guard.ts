@@ -1,5 +1,5 @@
 import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common"
-import { Reflector } from "@nestjs/core"
+
 import {
   ERROR_TEMPLATE_KEY,
   ErrorTemplateMetadata,
@@ -23,6 +23,10 @@ import {
  * before class-level and method-level guards, ensuring metadata is always
  * available.
  *
+ * **Why `Reflect.getMetadata` instead of `Reflector`?** This guard performs
+ * a single-target handler lookup — `Reflector` adds no value over the raw
+ * call and would introduce an unnecessary constructor dependency.
+ *
  * Registered globally via `APP_GUARD` in {@link ExceptionHandlerModule}.
  *
  * @see ErrorTemplate for the decorator that sets the metadata
@@ -30,8 +34,6 @@ import {
  */
 @Injectable()
 export class ErrorTemplateMetadataBridge implements CanActivate {
-  public constructor(private readonly reflector: Reflector) {}
-
   /**
    * Reads the {@link ErrorTemplateMetadata} from the current route handler
    * and, if present, stores the template options on `res.locals.errorTemplate`
@@ -44,10 +46,10 @@ export class ErrorTemplateMetadataBridge implements CanActivate {
    * @returns Always `true`.
    */
   public canActivate(context: ExecutionContext): true {
-    const metadata = this.reflector.get<ErrorTemplateMetadata>(
+    const metadata = Reflect.getMetadata(
       ERROR_TEMPLATE_KEY,
       context.getHandler(),
-    )
+    ) as ErrorTemplateMetadata | undefined
 
     if (metadata) {
       const response = context.switchToHttp().getResponse()

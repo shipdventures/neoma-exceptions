@@ -1,7 +1,6 @@
 import { faker } from "@faker-js/faker"
 import { ExecutionContext } from "@nestjs/common"
-import { Reflector } from "@nestjs/core"
-import { Test, TestingModule } from "@nestjs/testing"
+
 import {
   ERROR_TEMPLATE_KEY,
   ErrorTemplateMetadata,
@@ -35,15 +34,7 @@ function buildExecutionContext(
 }
 
 describe("ErrorTemplateMetadataBridge", () => {
-  let guard: ErrorTemplateMetadataBridge
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [ErrorTemplateMetadataBridge, Reflector],
-    }).compile()
-
-    guard = module.get<ErrorTemplateMetadataBridge>(ErrorTemplateMetadataBridge)
-  })
+  const guard = new ErrorTemplateMetadataBridge()
 
   describe("canActivate", () => {
     describe("Given the handler has no @ErrorTemplate metadata", () => {
