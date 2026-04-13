@@ -202,7 +202,7 @@ class LoggerWrapper {
  *
  * When both conditions are met:
  * 1. The request `Accept` header includes `text/html`
- * 2. `res.locals.errorTemplate` is set (via the {@link ErrorTemplateInterceptor})
+ * 2. `res.locals.errorTemplate` is set (via the {@link ErrorTemplateMetadataBridge})
  *
  * The filter resolves the template name from the {@link ErrorTemplateOptions}
  * object by matching `err.name` against the keys, falling back to `default`:

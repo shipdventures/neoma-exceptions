@@ -2,7 +2,7 @@ import { SetMetadata } from "@nestjs/common"
 
 /**
  * Metadata key used by {@link ErrorTemplate} and read by
- * {@link ErrorTemplateInterceptor}.
+ * {@link ErrorTemplateMetadataBridge}.
  */
 export const ERROR_TEMPLATE_KEY = "error-template"
 
@@ -23,7 +23,7 @@ export interface ErrorTemplateOptions {
 
 /**
  * Internal metadata shape stored by {@link ErrorTemplate} and read by
- * {@link ErrorTemplateInterceptor}.
+ * {@link ErrorTemplateMetadataBridge}.
  *
  * Bundles the template configuration with optional static locals that
  * are made available to the rendered template.
@@ -40,7 +40,7 @@ export interface ErrorTemplateMetadata {
  * The template configuration is normalised to an {@link ErrorTemplateOptions}
  * object and bundled with any static locals into an {@link ErrorTemplateMetadata}
  * object, stored as route metadata under the key {@link ERROR_TEMPLATE_KEY}.
- * The {@link ErrorTemplateInterceptor} reads this metadata and stashes the
+ * The {@link ErrorTemplateMetadataBridge} reads this metadata and stashes the
  * template options on `res.locals.errorTemplate` and the static locals on
  * `res.locals.errorTemplateLocals` so that the {@link NeomaExceptionFilter}
  * can content-negotiate between `render()` and `json()`.

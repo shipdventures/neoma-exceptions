@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `ErrorTemplateMetadataBridge` guard — ensures `@ErrorTemplate` metadata reaches the exception filter when a guard throws, fixing a gap where guard-thrown exceptions bypassed declared templates
+
+### Removed
+- `ErrorTemplateInterceptor` — replaced by `ErrorTemplateMetadataBridge` (auto-registered via `APP_GUARD`)
+
 ## [0.7.0] - 2026-04-05
 
 ### Added

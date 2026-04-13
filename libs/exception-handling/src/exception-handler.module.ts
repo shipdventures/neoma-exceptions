@@ -1,7 +1,7 @@
 import { Module, ValidationPipe } from "@nestjs/common"
-import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from "@nestjs/core"
+import { APP_FILTER, APP_GUARD, APP_PIPE } from "@nestjs/core"
 import { NeomaExceptionFilter } from "./filters/exception.filter"
-import { ErrorTemplateInterceptor } from "./interceptors/error-template.interceptor"
+import { ErrorTemplateMetadataBridge } from "./guards/error-template-metadata-bridge.guard"
 import { validationFactory } from "./pipes/validation.factory"
 
 /**
@@ -75,7 +75,7 @@ import { validationFactory } from "./pipes/validation.factory"
       provide: APP_PIPE,
       useValue: new ValidationPipe({ exceptionFactory: validationFactory }),
     },
-    { provide: APP_INTERCEPTOR, useClass: ErrorTemplateInterceptor },
+    { provide: APP_GUARD, useClass: ErrorTemplateMetadataBridge },
   ],
   exports: [],
 })

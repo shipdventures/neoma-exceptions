@@ -1,7 +1,17 @@
-// Export all public APIs here
-export * from "./decorators/error-template.decorator"
+// Module
 export * from "./exception-handler.module"
+
+// Filters
 export * from "./filters/exception.filter"
-export * from "./interceptors/error-template.interceptor"
+
+// Guards
+export * from "./guards/error-template-metadata-bridge.guard"
+
+// Decorators
+export * from "./decorators/error-template.decorator"
+
+// Interfaces
 export * from "./interfaces/neoma-exception.interface"
+
+// Pipes
 export * from "./pipes/validation.factory"
