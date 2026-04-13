@@ -204,7 +204,14 @@ describe("ErrorTemplateMetadataBridge", () => {
     })
 
     describe("Given the handler has @ErrorTemplate with options and locals", () => {
-      const templateName = `${system.directoryPath()}/${faker.hacker.noun()}`
+      const templateA = `${system.directoryPath()}/${faker.hacker.noun()}`
+      const templateB = `${system.directoryPath()}/${faker.hacker.noun()}`
+      const templateC = `${system.directoryPath()}/${faker.hacker.noun()}`
+      const templates = {
+        BadRequestException: templateA,
+        InternalServerErrorException: templateB,
+        default: templateC,
+      }
       const templateLocals = {
         formAction: faker.internet.url(),
         pageTitle: faker.lorem.words(),
@@ -213,7 +220,7 @@ describe("ErrorTemplateMetadataBridge", () => {
 
       beforeEach(() => {
         const metadata: ErrorTemplateMetadata = {
-          templates: { default: templateName },
+          templates,
           locals: templateLocals,
         }
         Reflect.defineMetadata(ERROR_TEMPLATE_KEY, metadata, handler)
@@ -230,9 +237,7 @@ describe("ErrorTemplateMetadataBridge", () => {
 
           guard.canActivate(context)
 
-          expect(res.locals).toHaveProperty("errorTemplate", {
-            default: templateName,
-          })
+          expect(res.locals).toHaveProperty("errorTemplate", templates)
         })
 
         it("Then it should set res.locals.errorTemplateLocals", () => {
