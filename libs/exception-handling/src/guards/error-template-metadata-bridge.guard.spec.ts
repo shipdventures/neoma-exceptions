@@ -1,5 +1,7 @@
 import { faker } from "@faker-js/faker"
 import { ExecutionContext } from "@nestjs/common"
+import { express } from "fixtures/express"
+import { executionContext } from "fixtures/nestjs"
 
 import {
   ERROR_TEMPLATE_KEY,
@@ -8,30 +10,6 @@ import {
 import { ErrorTemplateMetadataBridge } from "./error-template-metadata-bridge.guard"
 
 const { system } = faker
-
-function buildLocals(): Record<string, unknown> {
-  return {}
-}
-
-function buildExecutionContext(
-  handler: () => void,
-  locals: Record<string, unknown> = buildLocals(),
-): ExecutionContext {
-  return {
-    getHandler: () => handler,
-    getClass: () => Object,
-    switchToHttp: () => ({
-      getResponse: () => ({ locals }),
-      getRequest: () => ({}),
-      getNext: () => ({}),
-    }),
-    getArgs: () => [],
-    getArgByIndex: () => undefined,
-    switchToRpc: () => ({}) as never,
-    switchToWs: () => ({}) as never,
-    getType: () => "http" as const,
-  } as unknown as ExecutionContext
-}
 
 describe("ErrorTemplateMetadataBridge", () => {
   const guard = new ErrorTemplateMetadataBridge()
@@ -42,8 +20,12 @@ describe("ErrorTemplateMetadataBridge", () => {
 
       describe("When canActivate is called", () => {
         it("Then it should return true", () => {
-          const locals = buildLocals()
-          const context = buildExecutionContext(handler, locals)
+          const res = express.response({ locals: {} })
+          const context = executionContext(
+            express.request({ res }),
+            res,
+            handler,
+          ) as ExecutionContext
 
           const result = guard.canActivate(context)
 
@@ -51,13 +33,17 @@ describe("ErrorTemplateMetadataBridge", () => {
         })
 
         it("Then it should not set res.locals.errorTemplate", () => {
-          const locals = buildLocals()
-          const context = buildExecutionContext(handler, locals)
+          const res = express.response({ locals: {} })
+          const context = executionContext(
+            express.request({ res }),
+            res,
+            handler,
+          ) as ExecutionContext
 
           guard.canActivate(context)
 
-          expect(locals).not.toHaveProperty("errorTemplate")
-          expect(locals).not.toHaveProperty("errorTemplateLocals")
+          expect(res.locals).not.toHaveProperty("errorTemplate")
+          expect(res.locals).not.toHaveProperty("errorTemplateLocals")
         })
       })
     })
@@ -76,7 +62,12 @@ describe("ErrorTemplateMetadataBridge", () => {
 
       describe("When canActivate is called", () => {
         it("Then it should return true", () => {
-          const context = buildExecutionContext(handler)
+          const res = express.response({ locals: {} })
+          const context = executionContext(
+            express.request({ res }),
+            res,
+            handler,
+          ) as ExecutionContext
 
           const result = guard.canActivate(context)
 
@@ -84,23 +75,31 @@ describe("ErrorTemplateMetadataBridge", () => {
         })
 
         it("Then it should set res.locals.errorTemplate to a normalised object", () => {
-          const locals = buildLocals()
-          const context = buildExecutionContext(handler, locals)
+          const res = express.response({ locals: {} })
+          const context = executionContext(
+            express.request({ res }),
+            res,
+            handler,
+          ) as ExecutionContext
 
           guard.canActivate(context)
 
-          expect(locals).toHaveProperty("errorTemplate", {
+          expect(res.locals).toHaveProperty("errorTemplate", {
             default: templateName,
           })
         })
 
         it("Then it should set res.locals.errorTemplateLocals to an empty object", () => {
-          const locals = buildLocals()
-          const context = buildExecutionContext(handler, locals)
+          const res = express.response({ locals: {} })
+          const context = executionContext(
+            express.request({ res }),
+            res,
+            handler,
+          ) as ExecutionContext
 
           guard.canActivate(context)
 
-          expect(locals).toHaveProperty("errorTemplateLocals", {})
+          expect(res.locals).toHaveProperty("errorTemplateLocals", {})
         })
       })
     })
@@ -127,7 +126,12 @@ describe("ErrorTemplateMetadataBridge", () => {
 
       describe("When canActivate is called", () => {
         it("Then it should return true", () => {
-          const context = buildExecutionContext(handler)
+          const res = express.response({ locals: {} })
+          const context = executionContext(
+            express.request({ res }),
+            res,
+            handler,
+          ) as ExecutionContext
 
           const result = guard.canActivate(context)
 
@@ -135,12 +139,16 @@ describe("ErrorTemplateMetadataBridge", () => {
         })
 
         it("Then it should set res.locals.errorTemplate to the full options object", () => {
-          const locals = buildLocals()
-          const context = buildExecutionContext(handler, locals)
+          const res = express.response({ locals: {} })
+          const context = executionContext(
+            express.request({ res }),
+            res,
+            handler,
+          ) as ExecutionContext
 
           guard.canActivate(context)
 
-          expect(locals).toHaveProperty("errorTemplate", templates)
+          expect(res.locals).toHaveProperty("errorTemplate", templates)
         })
       })
     })
@@ -163,23 +171,34 @@ describe("ErrorTemplateMetadataBridge", () => {
 
       describe("When canActivate is called", () => {
         it("Then it should set res.locals.errorTemplate to a normalised object", () => {
-          const locals = buildLocals()
-          const context = buildExecutionContext(handler, locals)
+          const res = express.response({ locals: {} })
+          const context = executionContext(
+            express.request({ res }),
+            res,
+            handler,
+          ) as ExecutionContext
 
           guard.canActivate(context)
 
-          expect(locals).toHaveProperty("errorTemplate", {
+          expect(res.locals).toHaveProperty("errorTemplate", {
             default: templateName,
           })
         })
 
         it("Then it should set res.locals.errorTemplateLocals to the provided locals", () => {
-          const locals = buildLocals()
-          const context = buildExecutionContext(handler, locals)
+          const res = express.response({ locals: {} })
+          const context = executionContext(
+            express.request({ res }),
+            res,
+            handler,
+          ) as ExecutionContext
 
           guard.canActivate(context)
 
-          expect(locals).toHaveProperty("errorTemplateLocals", templateLocals)
+          expect(res.locals).toHaveProperty(
+            "errorTemplateLocals",
+            templateLocals,
+          )
         })
       })
     })
@@ -202,23 +221,34 @@ describe("ErrorTemplateMetadataBridge", () => {
 
       describe("When canActivate is called", () => {
         it("Then it should set res.locals.errorTemplate", () => {
-          const locals = buildLocals()
-          const context = buildExecutionContext(handler, locals)
+          const res = express.response({ locals: {} })
+          const context = executionContext(
+            express.request({ res }),
+            res,
+            handler,
+          ) as ExecutionContext
 
           guard.canActivate(context)
 
-          expect(locals).toHaveProperty("errorTemplate", {
+          expect(res.locals).toHaveProperty("errorTemplate", {
             default: templateName,
           })
         })
 
         it("Then it should set res.locals.errorTemplateLocals", () => {
-          const locals = buildLocals()
-          const context = buildExecutionContext(handler, locals)
+          const res = express.response({ locals: {} })
+          const context = executionContext(
+            express.request({ res }),
+            res,
+            handler,
+          ) as ExecutionContext
 
           guard.canActivate(context)
 
-          expect(locals).toHaveProperty("errorTemplateLocals", templateLocals)
+          expect(res.locals).toHaveProperty(
+            "errorTemplateLocals",
+            templateLocals,
+          )
         })
       })
     })
