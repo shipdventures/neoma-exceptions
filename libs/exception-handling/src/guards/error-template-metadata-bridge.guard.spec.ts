@@ -1,144 +1,235 @@
 import { faker } from "@faker-js/faker"
-import { Controller, Get, HttpStatus, Module, Res } from "@nestjs/common"
-import { NestExpressApplication } from "@nestjs/platform-express"
+import { ExecutionContext } from "@nestjs/common"
+import { Reflector } from "@nestjs/core"
 import { Test, TestingModule } from "@nestjs/testing"
-import { Response } from "express"
-import supertest from "supertest"
-import { ErrorTemplate } from "../decorators/error-template.decorator"
-import { ExceptionHandlerModule } from "../exception-handler.module"
+import {
+  ERROR_TEMPLATE_KEY,
+  ErrorTemplateMetadata,
+} from "../decorators/error-template.decorator"
+import { ErrorTemplateMetadataBridge } from "./error-template-metadata-bridge.guard"
 
 const { system } = faker
-const controllerPath = system.directoryPath()
 
-const withStringPath = `/${faker.string.uuid()}`
-const withOptionsPath = `/${faker.string.uuid()}`
-const withStringAndLocalsPath = `/${faker.string.uuid()}`
-const withOptionsAndLocalsPath = `/${faker.string.uuid()}`
-const withoutTemplatePath = `/${faker.string.uuid()}`
-
-const templateName = `${system.directoryPath()}/${faker.hacker.noun()}`
-const secondTemplateName = `${system.directoryPath()}/${faker.hacker.noun()}`
-const thirdTemplateName = `${system.directoryPath()}/${faker.hacker.noun()}`
-const locals = {
-  formAction: faker.internet.url(),
-  pageTitle: faker.lorem.words(),
+function buildLocals(): Record<string, unknown> {
+  return {}
 }
 
-@Controller(controllerPath)
-class ControllerClass {
-  @ErrorTemplate(templateName)
-  @Get(withStringPath)
-  public withString(@Res({ passthrough: true }) res: Response): object {
-    return { errorTemplate: res.locals.errorTemplate }
-  }
-
-  @ErrorTemplate({
-    BadRequestException: secondTemplateName,
-    InternalServerErrorException: thirdTemplateName,
-    default: templateName,
-  })
-  @Get(withOptionsPath)
-  public withOptions(@Res({ passthrough: true }) res: Response): object {
-    return { errorTemplate: res.locals.errorTemplate }
-  }
-
-  @ErrorTemplate(templateName, locals)
-  @Get(withStringAndLocalsPath)
-  public withStringAndLocals(
-    @Res({ passthrough: true }) res: Response,
-  ): object {
-    return {
-      errorTemplate: res.locals.errorTemplate,
-      errorTemplateLocals: res.locals.errorTemplateLocals,
-    }
-  }
-
-  @ErrorTemplate({ default: templateName }, locals)
-  @Get(withOptionsAndLocalsPath)
-  public withOptionsAndLocals(
-    @Res({ passthrough: true }) res: Response,
-  ): object {
-    return {
-      errorTemplate: res.locals.errorTemplate,
-      errorTemplateLocals: res.locals.errorTemplateLocals,
-    }
-  }
-
-  @Get(withoutTemplatePath)
-  public withoutTemplate(@Res({ passthrough: true }) res: Response): object {
-    return {
-      errorTemplate: res.locals.errorTemplate,
-      errorTemplateLocals: res.locals.errorTemplateLocals,
-    }
-  }
+function buildExecutionContext(
+  handler: () => void,
+  locals: Record<string, unknown> = buildLocals(),
+): ExecutionContext {
+  return {
+    getHandler: () => handler,
+    getClass: () => Object,
+    switchToHttp: () => ({
+      getResponse: () => ({ locals }),
+      getRequest: () => ({}),
+      getNext: () => ({}),
+    }),
+    getArgs: () => [],
+    getArgByIndex: () => undefined,
+    switchToRpc: () => ({}) as never,
+    switchToWs: () => ({}) as never,
+    getType: () => "http" as const,
+  } as unknown as ExecutionContext
 }
-
-@Module({
-  imports: [ExceptionHandlerModule],
-  controllers: [ControllerClass],
-})
-class GuardTestModule {}
 
 describe("ErrorTemplateMetadataBridge", () => {
-  let app: NestExpressApplication
+  let guard: ErrorTemplateMetadataBridge
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [GuardTestModule],
+      providers: [ErrorTemplateMetadataBridge, Reflector],
     }).compile()
 
-    app = module.createNestApplication()
-    await app.init()
+    guard = module.get<ErrorTemplateMetadataBridge>(ErrorTemplateMetadataBridge)
   })
 
-  afterEach(async () => {
-    await app.close()
-  })
+  describe("canActivate", () => {
+    describe("Given the handler has no @ErrorTemplate metadata", () => {
+      const handler = (): void => {}
 
-  it("should set res.locals.errorTemplate to a normalised object when @ErrorTemplate is passed a string", async () => {
-    const response = await supertest(app.getHttpServer())
-      .get(`${controllerPath}${withStringPath}`)
-      .expect(HttpStatus.OK)
+      describe("When canActivate is called", () => {
+        it("Then it should return true", () => {
+          const locals = buildLocals()
+          const context = buildExecutionContext(handler, locals)
 
-    expect(response.body.errorTemplate).toEqual({ default: templateName })
-  })
+          const result = guard.canActivate(context)
 
-  it("should set res.locals.errorTemplate to the full options object when @ErrorTemplate is passed multiple exception-to-template mappings", async () => {
-    const response = await supertest(app.getHttpServer())
-      .get(`${controllerPath}${withOptionsPath}`)
-      .expect(HttpStatus.OK)
+          expect(result).toBe(true)
+        })
 
-    expect(response.body.errorTemplate).toEqual({
-      BadRequestException: secondTemplateName,
-      InternalServerErrorException: thirdTemplateName,
-      default: templateName,
+        it("Then it should not set res.locals.errorTemplate", () => {
+          const locals = buildLocals()
+          const context = buildExecutionContext(handler, locals)
+
+          guard.canActivate(context)
+
+          expect(locals).not.toHaveProperty("errorTemplate")
+          expect(locals).not.toHaveProperty("errorTemplateLocals")
+        })
+      })
     })
-  })
 
-  it("should set res.locals.errorTemplateLocals when @ErrorTemplate is passed a string and locals", async () => {
-    const response = await supertest(app.getHttpServer())
-      .get(`${controllerPath}${withStringAndLocalsPath}`)
-      .expect(HttpStatus.OK)
+    describe("Given the handler has @ErrorTemplate with a string template", () => {
+      const templateName = `${system.directoryPath()}/${faker.hacker.noun()}`
+      const handler = (): void => {}
 
-    expect(response.body.errorTemplate).toEqual({ default: templateName })
-    expect(response.body.errorTemplateLocals).toEqual(locals)
-  })
+      beforeEach(() => {
+        const metadata: ErrorTemplateMetadata = {
+          templates: { default: templateName },
+          locals: {},
+        }
+        Reflect.defineMetadata(ERROR_TEMPLATE_KEY, metadata, handler)
+      })
 
-  it("should set res.locals.errorTemplateLocals when @ErrorTemplate is passed options and locals", async () => {
-    const response = await supertest(app.getHttpServer())
-      .get(`${controllerPath}${withOptionsAndLocalsPath}`)
-      .expect(HttpStatus.OK)
+      describe("When canActivate is called", () => {
+        it("Then it should return true", () => {
+          const context = buildExecutionContext(handler)
 
-    expect(response.body.errorTemplate).toEqual({ default: templateName })
-    expect(response.body.errorTemplateLocals).toEqual(locals)
-  })
+          const result = guard.canActivate(context)
 
-  it("should not set res.locals.errorTemplate when @ErrorTemplate is not present", async () => {
-    const response = await supertest(app.getHttpServer())
-      .get(`${controllerPath}${withoutTemplatePath}`)
-      .expect(HttpStatus.OK)
+          expect(result).toBe(true)
+        })
 
-    expect(response.body.errorTemplate).toBeUndefined()
-    expect(response.body.errorTemplateLocals).toBeUndefined()
+        it("Then it should set res.locals.errorTemplate to a normalised object", () => {
+          const locals = buildLocals()
+          const context = buildExecutionContext(handler, locals)
+
+          guard.canActivate(context)
+
+          expect(locals).toHaveProperty("errorTemplate", {
+            default: templateName,
+          })
+        })
+
+        it("Then it should set res.locals.errorTemplateLocals to an empty object", () => {
+          const locals = buildLocals()
+          const context = buildExecutionContext(handler, locals)
+
+          guard.canActivate(context)
+
+          expect(locals).toHaveProperty("errorTemplateLocals", {})
+        })
+      })
+    })
+
+    describe("Given the handler has @ErrorTemplate with an options object", () => {
+      const templateName = `${system.directoryPath()}/${faker.hacker.noun()}`
+      const secondTemplateName = `${system.directoryPath()}/${faker.hacker.noun()}`
+      const thirdTemplateName = `${system.directoryPath()}/${faker.hacker.noun()}`
+      const handler = (): void => {}
+
+      const templates = {
+        BadRequestException: secondTemplateName,
+        InternalServerErrorException: thirdTemplateName,
+        default: templateName,
+      }
+
+      beforeEach(() => {
+        const metadata: ErrorTemplateMetadata = {
+          templates,
+          locals: {},
+        }
+        Reflect.defineMetadata(ERROR_TEMPLATE_KEY, metadata, handler)
+      })
+
+      describe("When canActivate is called", () => {
+        it("Then it should return true", () => {
+          const context = buildExecutionContext(handler)
+
+          const result = guard.canActivate(context)
+
+          expect(result).toBe(true)
+        })
+
+        it("Then it should set res.locals.errorTemplate to the full options object", () => {
+          const locals = buildLocals()
+          const context = buildExecutionContext(handler, locals)
+
+          guard.canActivate(context)
+
+          expect(locals).toHaveProperty("errorTemplate", templates)
+        })
+      })
+    })
+
+    describe("Given the handler has @ErrorTemplate with a string template and locals", () => {
+      const templateName = `${system.directoryPath()}/${faker.hacker.noun()}`
+      const templateLocals = {
+        formAction: faker.internet.url(),
+        pageTitle: faker.lorem.words(),
+      }
+      const handler = (): void => {}
+
+      beforeEach(() => {
+        const metadata: ErrorTemplateMetadata = {
+          templates: { default: templateName },
+          locals: templateLocals,
+        }
+        Reflect.defineMetadata(ERROR_TEMPLATE_KEY, metadata, handler)
+      })
+
+      describe("When canActivate is called", () => {
+        it("Then it should set res.locals.errorTemplate to a normalised object", () => {
+          const locals = buildLocals()
+          const context = buildExecutionContext(handler, locals)
+
+          guard.canActivate(context)
+
+          expect(locals).toHaveProperty("errorTemplate", {
+            default: templateName,
+          })
+        })
+
+        it("Then it should set res.locals.errorTemplateLocals to the provided locals", () => {
+          const locals = buildLocals()
+          const context = buildExecutionContext(handler, locals)
+
+          guard.canActivate(context)
+
+          expect(locals).toHaveProperty("errorTemplateLocals", templateLocals)
+        })
+      })
+    })
+
+    describe("Given the handler has @ErrorTemplate with options and locals", () => {
+      const templateName = `${system.directoryPath()}/${faker.hacker.noun()}`
+      const templateLocals = {
+        formAction: faker.internet.url(),
+        pageTitle: faker.lorem.words(),
+      }
+      const handler = (): void => {}
+
+      beforeEach(() => {
+        const metadata: ErrorTemplateMetadata = {
+          templates: { default: templateName },
+          locals: templateLocals,
+        }
+        Reflect.defineMetadata(ERROR_TEMPLATE_KEY, metadata, handler)
+      })
+
+      describe("When canActivate is called", () => {
+        it("Then it should set res.locals.errorTemplate", () => {
+          const locals = buildLocals()
+          const context = buildExecutionContext(handler, locals)
+
+          guard.canActivate(context)
+
+          expect(locals).toHaveProperty("errorTemplate", {
+            default: templateName,
+          })
+        })
+
+        it("Then it should set res.locals.errorTemplateLocals", () => {
+          const locals = buildLocals()
+          const context = buildExecutionContext(handler, locals)
+
+          guard.canActivate(context)
+
+          expect(locals).toHaveProperty("errorTemplateLocals", templateLocals)
+        })
+      })
+    })
   })
 })
